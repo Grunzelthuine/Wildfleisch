@@ -9,4 +9,4 @@ Web-App (PWA) für den Wildfleisch-Bestand in der Gefriertruhe.
 - Passwortschutz: Daten liegen als `data/wildtruhe.json` im Repo, AES-GCM-verschlüsselt (PBKDF2/SHA-256, 150.000 Runden, gleiches Format wie Hochsitze). Lesen ohne Token, Schreiben mit Fine-grained-Token (Contents: Read and write). Passwort wird einmal pro Gerät abgefragt.
 - Abgleich zwischen Geräten: pro Paket gewinnt die jüngste Änderung; offline wird lokal gespeichert und später hochgeladen
 
-Version 1.1.0 · Dateien: index.html, manifest.json, sw.js, icon-192.png, icon-512.png
+Version 1.2.0 · Dateien: index.html, manifest.json, sw.js, icon-192.png, icon-512.png

@@ -83,8 +83,9 @@ textarea{min-height:84px;resize:vertical}
 .x{border:0;background:none;color:var(--muted);font-size:1.2rem;padding:4px 6px}
 .empty{text-align:center;color:var(--muted);padding:30px 10px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--card);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
-.sheet .h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sheet{background:var(--card);width:100%;max-width:720px;max-height:85vh;max-height:calc(100dvh - env(safe-area-inset-top) - 24px);overflow:auto;-webkit-overflow-scrolling:touch;border-radius:18px 18px 0 0;padding:0 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet .h{display:flex;align-items:center;gap:8px;margin:0 -16px 6px;padding:12px 16px 10px;position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line)}
+.backbtn{font:inherit;font-weight:600;color:var(--accent);background:none;border:0;padding:6px 8px 6px 0;white-space:nowrap}
 .sheet .h b{font-size:1.1rem;flex:1}
 .sep{height:1px;background:var(--line);margin:16px 0}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -103,14 +104,23 @@ table.pr input,table.pr select{padding:6px 8px}
 .lockbox .btn{margin-top:12px}
 .lockbox .err{color:var(--bad)}
 #sync{margin-left:6px}
+.htop{display:flex;align-items:center;gap:8px}
+.htop h1{flex:1}
+.hbtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--fg);font-size:1.25rem;line-height:1;display:flex;align-items:center;justify-content:center}
+.hbtn.spin span{display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#updbar{margin:8px 0 0;display:flex;align-items:center;gap:8px}
+#updbar[hidden]{display:none}
+#updbar span{flex:1}
 #sync.err{color:var(--bad)}
 #sync.local{color:var(--warn)}
 </style>
 </head>
 <body>
 <header>
-  <h1>🦌 Wildtruhe</h1>
+  <div class="htop"><h1>🦌 Wildtruhe</h1><button class="hbtn" id="reloadBtn" aria-label="Neu laden" title="Abgleichen & nach Update suchen"><span>↻</span></button></div>
   <div class="sub"><span id="hsub"></span><span id="sync"></span></div>
+  <div id="updbar" class="banner warn" hidden><span>✨ Neue Version verfügbar</span><button class="btn sm" id="updBtn">Jetzt laden</button></div>
 </header>
 <div id="lock" class="lockscreen" hidden>
   <form id="lockForm" class="lockbox" autocomplete="off">
@@ -135,6 +145,7 @@ table.pr input,table.pr select{padding:6px 8px}
 <script>
 'use strict';
 /* ================== Daten ================== */
+const APP_VERSION = '1.2.0'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
 const KEY = 'wildtruhe_v1';
 // Startpreise (für Freunde, unteres bis mittleres Direktvermarkter-Niveau) – in "Mehr" änderbar
 const DEFAULT_PREISE = {
@@ -733,7 +744,7 @@ function openSheet(id){
   const truhe = it.status === 'truhe';
   const ab = it.abgang || {};
   ov.innerHTML = `<div class="sheet" id="sheet">
-    <div class="h"><b>${nrTxt(it.nr)} · ${esc(it.art)} ${esc(it.teil)}</b><button class="x" data-close>✕</button></div>
+    <div class="h"><button class="backbtn" data-close>‹ Zurück</button><b>${nrTxt(it.nr)} · ${esc(it.art)} ${esc(it.teil)}</b></div>
     <div class="hint" style="margin:0 0 4px">❄️ ${fmtDate(it.datum)} · ${ageTxt(it.datum)} · weg bis ${fmtDate(deadline(it))}${truhe?'':' · <b>'+STATUS[it.status]+'</b>'}</div>
     <div id="sf">${fieldsHTML(it, false)}</div>
     <button class="btn full" id="savef" style="margin-top:12px">Änderungen speichern</button>
@@ -755,11 +766,12 @@ function openSheet(id){
     <div class="actions">
       <button class="btn" id="ics">📅 Kalender-Erinnerung</button>
       <button class="btn bad" id="del">Löschen</button></div>
+    <button class="btn full" data-close style="margin-top:16px">‹ Zurück ohne Speichern</button>
   </div>`;
   document.body.appendChild(ov);
   document.body.style.overflow = 'hidden';
   const close = () => { ov.remove(); document.body.style.overflow = ''; render(); };
-  ov.onclick = e => { if (e.target === ov || e.target.hasAttribute('data-close')) close(); };
+  ov.onclick = e => { if (e.target === ov || e.target.closest('[data-close]')) close(); };
   const read = bindFields($('#sf', ov), it);
   const applyFields = () => { const o = read(); Object.assign(it, {art:o.art, teil:o.teil, gramm:o.gramm, anzahl:o.anzahl, datum:o.datum, preis:o.preis, preisManuell:o.preisManuell, notiz:o.notiz}); touch(it); };
   const readAb = () => ({kaeufer: $('#ak',ov).value.trim(), preis: Number($('#ap',ov).value)||0, datum: $('#ad',ov).value || today(), bezahlt: $('#ab',ov).checked});
@@ -875,6 +887,14 @@ function viewMehr(){
       <button class="btn sm" id="repr">Preise in der Truhe neu berechnen</button></div>
     <div class="hint">Geänderte Preise gelten für neue Pakete. „Neu berechnen“ passt alle Pakete in der Truhe an (außer manuell gesetzte Preise).</div>
   </div>
+  <div class="card"><h2>ℹ️ App</h2>
+    <div class="hint" style="margin-top:0">Version ${APP_VERSION} · Updates werden beim Start, beim Zurückkehren in die App und alle 30 Minuten gesucht und automatisch installiert.</div>
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn" id="updchk">🔍 Nach Update suchen</button>
+      <button class="btn" id="hardreload">⟳ App neu laden</button>
+    </div>
+    <div class="hint">„App neu laden“ holt alle App-Dateien frisch von GitHub. Deine Daten bleiben erhalten.</div>
+  </div>
   <div class="card"><h2>💾 Daten</h2>
     <div class="hint" style="margin-top:0">Zusätzlich zur verschlüsselten Ablage im Repo kannst du eine Sicherung als Datei ziehen. Achtung: Die Sicherungsdatei ist <b>nicht</b> verschlüsselt.</div>
     <div class="row wrap" style="margin-top:10px">
@@ -908,6 +928,8 @@ function viewMehr(){
     localStorage.removeItem(KEY); localStorage.removeItem(LS_DIRTY); DIRTY = false;
     load(); showLock();
   };
+  $('#updchk').onclick = async () => { toast('Suche nach Update …'); const f = await checkUpdate(); if (!f) setTimeout(() => { if (!NEW_SW) toast('Du hast die neueste Version (' + APP_VERSION + ')'); }, 2500); };
+  $('#hardreload').onclick = hardReload;
   $('#rund').value = String(S.cfg.runden);
   $('#rund').onchange = e => { S.cfg.runden = Number(e.target.value); saveMeta(); };
   $('#cm').onchange = e => { S.cfg.monate = Math.max(1, Number(e.target.value)||6); saveMeta(); render(); };
@@ -984,13 +1006,64 @@ async function checkNotify(){
   } catch(e){}
 }
 
+/* ================== Updates (Service Worker) ==================
+ * Neue Version = neue VERSION in sw.js. Der neue Service Worker lädt im Hintergrund,
+ * danach wird automatisch neu geladen – außer du bist gerade beim Eintragen/Bearbeiten,
+ * dann erscheint oben „Neue Version verfügbar“. */
+let REG = null, NEW_SW = null, RELOADING = false;
+function busyEditing(){
+  if (document.querySelector('.overlay')) return true;
+  if (TAB === 'neu') { const t = $('#dtext'), g = $('[data-f="gramm"]'), n = $('[data-f="notiz"]'); return !!((t && t.value.trim()) || (g && g.value) || (n && n.value.trim()) || PREVIEW.length); }
+  return false;
+}
+function offerUpdate(sw){
+  NEW_SW = sw;
+  if (!busyEditing()) { toast('Update wird installiert …'); sw.postMessage('skipWaiting'); }
+  else $('#updbar').hidden = false;
+}
+function swInit(){
+  if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (RELOADING) return; RELOADING = true; location.reload(); });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    REG = reg;
+    if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      nw && nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(nw); });
+    });
+    if (PW) checkNotify();
+  }).catch(() => {});
+  setInterval(() => { if (document.visibilityState === 'visible') checkUpdate(); }, 30 * 60 * 1000);
+}
+async function checkUpdate(){
+  if (!REG) return false;
+  try { await REG.update(); } catch(e) { return false; }
+  if (REG.waiting && navigator.serviceWorker.controller) { offerUpdate(REG.waiting); return true; }
+  return !!REG.installing;
+}
+async function hardReload(){
+  try { const regs = await navigator.serviceWorker?.getRegistrations?.(); await Promise.all((regs || []).map(r => r.unregister())); } catch(e) {}
+  try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch(e) {}
+  location.replace(location.pathname + '?r=' + Date.now());
+}
+// wenn ein Update wartet und du das Bearbeiten beendest → dann installieren
+document.addEventListener('click', () => { if (NEW_SW && !$('#updbar').hidden) setTimeout(() => { if (NEW_SW && !busyEditing()) NEW_SW.postMessage('skipWaiting'); }, 400); });
+
 /* ================== Start ================== */
 load();
 $('#lockForm').addEventListener('submit', unlock);
 if (!PW) showLock();
 else { go('truhe'); setSync(DIRTY ? (GH.token ? 'busy' : 'local') : ''); sync(); }
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').then(() => { if (PW) checkNotify(); }).catch(()=>{});
-document.addEventListener('visibilitychange', () => { if (!document.hidden && PW) { if (TAB === 'truhe') render(); sync(); checkNotify(); } });
+swInit();
+$('#reloadBtn').onclick = async () => {
+  const b = $('#reloadBtn'); b.classList.add('spin');
+  checkUpdate();
+  if (PW) { await sync(); if (TAB !== 'neu') render(); }
+  setTimeout(() => b.classList.remove('spin'), 400);
+  if (!NEW_SW) toast(SYNC.st === 'err' ? 'Abgleich fehlgeschlagen: ' + SYNC.msg : 'Aktualisiert ✓');
+};
+$('#updBtn').onclick = () => { if (NEW_SW) NEW_SW.postMessage('skipWaiting'); };
+document.addEventListener('visibilitychange', () => { if (document.hidden) return; checkUpdate(); if (PW) { if (TAB === 'truhe') render(); sync(); checkNotify(); } });
 window.addEventListener('online', () => { if (PW) sync(); });
 </script>
 </body>
