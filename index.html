@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wildtruhe</title>
+<meta name="theme-color" content="#2f3b26">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wildtruhe">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f3f1ea; --card:#fff; --fg:#22261d; --muted:#6c7064; --line:#dedbd0;
+  --accent:#4f6332; --accent-fg:#fff; --soft:#e6ead9;
+  --ok:#3d7a4f; --warn:#b07a12; --bad:#b23b2e;
+  --ok-bg:#e3f0e6; --warn-bg:#f8edd2; --bad-bg:#f7dfdb;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#181a15; --card:#23261f; --fg:#ebeadf; --muted:#a2a596; --line:#363a30;
+  --accent:#9bb26a; --accent-fg:#1a1d14; --soft:#2f3527;
+  --ok:#7cc490; --warn:#e5b450; --bad:#ef7a6c;
+  --ok-bg:#24352a; --warn-bg:#3b321c; --bad-bg:#40241f; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top) + 10px) 16px 8px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:1.35rem;letter-spacing:.2px}
+header .sub{color:var(--muted);font-size:.85rem}
+main{max-width:720px;margin:0 auto;padding:14px 14px calc(90px + env(safe-area-inset-bottom))}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{background:none;border:0;color:var(--muted);padding:9px 0 8px;font-size:.75rem;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .i{font-size:1.3rem;line-height:1}
+nav button.on{color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:1.25rem}
+.stat span{color:var(--muted);font-size:.78rem}
+.banner{border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.92rem}
+.banner.bad{background:var(--bad-bg);color:var(--bad)}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:6px 12px;font-size:.88rem}
+.chip.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.row{display:flex;gap:8px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.spacer{flex:1}
+.item{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--ok);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer}
+.item.gelb{border-left-color:var(--warn)}
+.item.rot{border-left-color:var(--bad)}
+.item .nr{font-weight:700;font-variant-numeric:tabular-nums;min-width:44px;color:var(--muted)}
+.item .main{flex:1;min-width:0}
+.item .t{font-weight:600}
+.item .m{color:var(--muted);font-size:.85rem}
+.item .p{font-weight:600;text-align:right;white-space:nowrap}
+.badge{display:inline-block;font-size:.72rem;border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:1px}
+.badge.gelb{background:var(--warn-bg);color:var(--warn)}
+.badge.rot{background:var(--bad-bg);color:var(--bad)}
+.badge.ok{background:var(--ok-bg);color:var(--ok)}
+.badge.grau{background:var(--soft);color:var(--muted)}
+h2{font-size:1.05rem;margin:4px 0 10px}
+h3{font-size:.95rem;margin:14px 0 8px;color:var(--muted);font-weight:600}
+label{display:block;font-size:.8rem;color:var(--muted);margin:8px 0 3px}
+input,select,textarea{width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
+textarea{min-height:84px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:10px 14px;font-weight:600}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.bad{color:var(--bad)}
+.btn.full{width:100%}
+.btn.sm{padding:6px 10px;font-size:.85rem}
+.btn:disabled{opacity:.5}
+.mic{width:64px;height:64px;border-radius:50%;font-size:1.7rem;flex:none;display:flex;align-items:center;justify-content:center}
+.mic.rec{background:var(--bad);color:#fff;border-color:var(--bad);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{transform:scale(1.07)}}
+.hint{color:var(--muted);font-size:.82rem;margin-top:6px}
+.prev{border:1px dashed var(--line);border-radius:10px;padding:8px 10px;margin-top:8px;display:flex;gap:8px;align-items:center}
+.prev .main{flex:1}
+.prev.err{border-color:var(--bad)}
+.x{border:0;background:none;color:var(--muted);font-size:1.2rem;padding:4px 6px}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet .h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sheet .h b{font-size:1.1rem;flex:1}
+.sep{height:1px;background:var(--line);margin:16px 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:.9rem;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+table.pr{width:100%;border-collapse:collapse}
+table.pr td{padding:5px 4px;border-bottom:1px solid var(--line);font-size:.92rem}
+table.pr input,table.pr select{padding:6px 8px}
+.chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.95rem;color:var(--fg)}
+.chk input{width:22px;height:22px}
+.paid{cursor:pointer}
+.lockscreen{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+.lockscreen[hidden]{display:none}
+.lockbox{width:100%;max-width:340px;text-align:center}
+.lockbox input{margin-top:10px;text-align:center}
+.lockbox .btn{margin-top:12px}
+.lockbox .err{color:var(--bad)}
+#sync{margin-left:6px}
+#sync.err{color:var(--bad)}
+#sync.local{color:var(--warn)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🦌 Wildtruhe</h1>
+  <div class="sub"><span id="hsub"></span><span id="sync"></span></div>
+</header>
+<div id="lock" class="lockscreen" hidden>
+  <form id="lockForm" class="lockbox" autocomplete="off">
+    <div style="font-size:2.6rem">🔒</div>
+    <h2 style="font-size:1.3rem">Wildtruhe</h2>
+    <p id="lockMsg" class="hint"></p>
+    <input type="password" id="lockPw" placeholder="Passwort" autocomplete="current-password" aria-label="Passwort">
+    <input type="password" id="lockPw2" placeholder="Passwort wiederholen" autocomplete="new-password" aria-label="Passwort wiederholen" hidden>
+    <button class="btn pri full" id="lockBtn" type="submit">Öffnen</button>
+    <p class="hint">Das Passwort wird nur einmal pro Gerät abgefragt.</p>
+  </form>
+</div>
+<main id="view"></main>
+<nav id="nav">
+  <button data-tab="truhe"><span class="i">❄️</span>Truhe</button>
+  <button data-tab="neu"><span class="i">➕</span>Neu</button>
+  <button data-tab="verlauf"><span class="i">📜</span>Verlauf</button>
+  <button data-tab="mehr"><span class="i">⚙️</span>Mehr</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ================== Daten ================== */
+const KEY = 'wildtruhe_v1';
+// Startpreise (für Freunde, unteres bis mittleres Direktvermarkter-Niveau) – in "Mehr" änderbar
+const DEFAULT_PREISE = {
+  'Reh':     {'Keule':{e:'kg',p:28}, 'Rücken':{e:'kg',p:45}, 'Filet':{e:'kg',p:50}, 'Wurst':{e:'kg',p:26}},
+  'Damwild': {'Keule / Braten':{e:'kg',p:26}, 'Rückenstrang':{e:'kg',p:42}, 'Filet':{e:'kg',p:48}, 'Hackfleisch':{e:'kg',p:15}},
+  'Hase':    {'Rücken':{e:'stk',p:10}, 'Keulen (Paar)':{e:'stk',p:10}, 'Rücken mit 2 Keulen':{e:'stk',p:16}, 'komplett':{e:'stk',p:18}},
+  'Fasan':   {'komplett':{e:'stk',p:10}, 'Brust (Paar)':{e:'stk',p:8}},
+  'Ente':    {'komplett':{e:'stk',p:8}, 'Brust (Paar)':{e:'stk',p:7}}
+};
+const STATUS = {verkauft:'Verkauft', verschenkt:'Verschenkt', selbst:'Selbst verbraucht', entsorgt:'Entsorgt'};
+let S;
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function normalize(d){
+  if (!d || typeof d !== 'object') d = {};
+  d.seq = d.seq || 0;
+  d.items = Array.isArray(d.items) ? d.items : [];
+  if (!d.preise) d.preise = clone(DEFAULT_PREISE);
+  d.cfg = Object.assign({monate:6, vorwarnTage:30, runden:0.5}, d.cfg || {});
+  d.geloescht = Array.isArray(d.geloescht) ? d.geloescht : [];
+  d.metaZeit = d.metaZeit || 0;
+  return d;
+}
+function load(){
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(KEY)); } catch(e) {}
+  S = normalize(d);
+}
+function persistLocal(){
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast('⚠️ Speichern fehlgeschlagen'); }
+}
+// jede Änderung: lokal sichern, als „nicht hochgeladen“ markieren, Abgleich mit GitHub anstoßen
+function save(){
+  persistLocal();
+  DIRTY = true; localStorage.setItem(LS_DIRTY, '1');
+  setSync(GH.token ? 'busy' : 'local');
+  scheduleSync();
+}
+const touch = it => { it.geaendert = Date.now(); };
+function saveMeta(){ S.metaZeit = Date.now(); save(); }
+
+/* ================== Passwort, Verschlüsselung, GitHub-Abgleich ==================
+ * Daten liegen als data/wildtruhe.json im Repo – AES-GCM verschlüsselt (PBKDF2/SHA-256, 150.000 Runden),
+ * gleiches Format wie Hochsitze / Jagd Thuine. Ohne Passwort ist die Datei nicht lesbar.
+ * Lesen geht ohne Token, Schreiben nur mit GitHub-Token (Einstellungen unter „Mehr“). */
+const LS_PW = 'wt.pw.v1', LS_GH = 'wt.gh.v1', LS_DIRTY = 'wt.dirty.v1';
+const DATA_PATH = 'data/wildtruhe.json';
+let PW = localStorage.getItem(LS_PW) || '';
+let PREV_PW = '';
+let DIRTY = localStorage.getItem(LS_DIRTY) === '1';
+function ghDefaults(){
+  const h = location.hostname.match(/^([^.]+)\.github\.io$/i);
+  const seg = location.pathname.split('/').filter(Boolean)[0];
+  return {owner: h ? h[1] : 'Grunzelthuine', repo: (h && seg) ? seg : 'Wildfleisch', branch: 'main', token: ''};
+}
+let GH = (() => { let g = {}; try { g = JSON.parse(localStorage.getItem(LS_GH) || '{}'); } catch(e){} return Object.assign(ghDefaults(), g); })();
+const saveGH = () => localStorage.setItem(LS_GH, JSON.stringify(GH));
+
+class NeedPassword extends Error {}
+const bytesToB64 = bytes => { let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(bin); };
+const b64ToBytes = b64 => Uint8Array.from(atob(b64.replace(/\s/g, '')), c => c.charCodeAt(0));
+const b64encodeUtf8 = str => bytesToB64(new TextEncoder().encode(str));
+const keyCache = new Map();
+function deriveKey(pw, salt, iter = 150000){
+  const id = pw + '|' + iter + '|' + bytesToB64(salt);
+  if (keyCache.has(id)) return keyCache.get(id);
+  const p = (async () => {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:iter, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+  })();
+  keyCache.set(id, p); p.catch(() => keyCache.delete(id));
+  return p;
+}
+async function encryptJSON(obj, pw){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 150000;
+  const key = await deriveKey(pw, salt, iter);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode(JSON.stringify(obj))));
+  return {enc:'aes-gcm-v1', hinweis:'Verschlüsselte Daten', iter, salt:bytesToB64(salt), iv:bytesToB64(iv), data:bytesToB64(ct)};
+}
+async function decryptJSON(env, pw){
+  const key = await deriveKey(pw, b64ToBytes(env.salt), env.iter || 150000);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64ToBytes(env.iv)}, key, b64ToBytes(env.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function ghUrl(ref = true){
+  return `https://api.github.com/repos/${encodeURIComponent(GH.owner)}/${encodeURIComponent(GH.repo)}/contents/${DATA_PATH}` + (ref ? `?ref=${encodeURIComponent(GH.branch || 'main')}` : '');
+}
+function ghH(){ const h = {Accept:'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'}; if (GH.token) h.Authorization = 'Bearer ' + GH.token; return h; }
+/** liest die verschlüsselte Datei → {raw, sha}; raw = null, wenn es sie noch nicht gibt. Wirft bei fehlendem Netz. */
+async function fetchRemote(){
+  if (GH.owner && GH.repo) {
+    try {
+      const r = await fetch(ghUrl() + '&t=' + Date.now(), {headers:ghH(), cache:'no-store'});
+      if (r.ok) { const j = await r.json(); return {raw: JSON.parse(new TextDecoder().decode(b64ToBytes(j.content || ''))), sha: j.sha}; }
+      if (r.status === 404) return {raw:null, sha:undefined};
+      if (r.status === 401) toast('GitHub-Token ungültig – unter „Mehr“ prüfen', 4000);
+    } catch(e) { /* weiter mit der Pages-Datei */ }
+  }
+  const r = await fetch(DATA_PATH + '?t=' + Date.now(), {cache:'no-store'});
+  if (r.status === 404) return {raw:null, sha:undefined, viaPages:true};
+  if (!r.ok) throw new Error('Daten nicht erreichbar');
+  return {raw: await r.json(), sha: undefined, viaPages:true};
+}
+async function openRemote(raw, pw = PW){
+  if (!raw) return null;
+  if (!raw.enc) return normalize(raw);
+  for (const p of [pw, PREV_PW].filter(Boolean)) { try { return normalize(await decryptJSON(raw, p)); } catch(e){} }
+  throw new NeedPassword('falsch');
+}
+/** zwei Stände zusammenführen: pro Paket gewinnt die jüngste Änderung, Gelöschtes bleibt gelöscht */
+function mergeData(a, b){
+  if (!b) return a;
+  const del = new Set([...(a.geloescht||[]), ...(b.geloescht||[])]);
+  const map = new Map();
+  for (const it of [...b.items, ...a.items]) { const o = map.get(it.id); if (!o || (it.geaendert||0) >= (o.geaendert||0)) map.set(it.id, it); }
+  const items = [...map.values()].filter(i => !del.has(i.id)).sort((x,y) => x.nr - y.nr);
+  const m = (b.metaZeit||0) > (a.metaZeit||0) ? b : a;
+  return normalize({
+    seq: Math.max(a.seq||0, b.seq||0, ...items.map(i => i.nr)), items,
+    preise: clone(m.preise), cfg: clone(m.cfg), metaZeit: Math.max(a.metaZeit||0, b.metaZeit||0),
+    geloescht: [...del].slice(-1000), lastNotify: a.lastNotify
+  });
+}
+let SYNC = {st:'', msg:''};
+function setSync(st, msg = ''){
+  SYNC = {st, msg};
+  const el = $('#sync'); if (!el) return;
+  const t = {ok:'· ☁️ synchron', busy:'· ⏳ speichere …', local:'· 📱 nur auf diesem Gerät', err:'· ⚠️ ' + msg}[st] || '';
+  el.textContent = t; el.className = st;
+}
+let syncing = false, syncAgain = false, syncT;
+function scheduleSync(ms = 1500){ clearTimeout(syncT); syncT = setTimeout(sync, ms); }
+async function sync(){
+  if (!PW) return;
+  if (syncing) { syncAgain = true; return; }
+  if (document.querySelector('.overlay')) { scheduleSync(2000); return; } // nicht mitten im Bearbeiten austauschen
+  syncing = true;
+  if (DIRTY && GH.token) setSync('busy');
+  try {
+    let done = false;
+    for (let attempt = 0; attempt < 3 && !done; attempt++) {
+      const {raw, sha, viaPages} = await fetchRemote();
+      const remote = await openRemote(raw);
+      S = mergeData(S, remote); persistLocal();
+      if (TAB !== 'neu') render(); else $('#hsub').textContent = inTruhe().length + ' Pakete in der Truhe';
+      const needPush = DIRTY || !raw || !raw.enc || PREV_PW;
+      if (!needPush) { setSync('ok'); done = true; break; }
+      if (!GH.token) { setSync('local'); done = true; break; }
+      if (raw && viaPages) throw new Error('GitHub nicht erreichbar');
+      const body = JSON.stringify(await encryptJSON(S, PW), null, 1) + '\n';
+      const r = await fetch(ghUrl(false), {method:'PUT', headers:{...ghH(), 'Content-Type':'application/json'},
+        body: JSON.stringify(Object.assign({message:'Wildtruhe aktualisiert', content:b64encodeUtf8(body), branch:GH.branch || 'main'}, sha ? {sha} : {}))});
+      if (r.ok) { DIRTY = false; localStorage.setItem(LS_DIRTY, '0'); PREV_PW = ''; setSync('ok'); done = true; break; }
+      if (r.status === 409 || r.status === 422) continue; // zwischendurch geändert → neu holen und nochmal
+      throw new Error(r.status === 401 || r.status === 403 ? 'Token ohne Schreibrecht' : r.status === 404 ? 'Repo nicht gefunden' : 'GitHub ' + r.status);
+    }
+    if (!done) throw new Error('Konflikt beim Speichern');
+  } catch(e) {
+    if (e instanceof NeedPassword) showLock('falsch');
+    else setSync('err', navigator.onLine === false ? 'offline' : e.message);
+  } finally {
+    syncing = false;
+    if (syncAgain) { syncAgain = false; scheduleSync(300); }
+  }
+}
+
+/* ---------- Sperrbildschirm ---------- */
+let LOCK_NEW = false;
+function showLock(reason){
+  PW = ''; localStorage.removeItem(LS_PW);
+  $('#lock').hidden = false; $('#view').innerHTML = ''; $('#hsub').textContent = ''; setSync('');
+  LOCK_NEW = false; $('#lockPw2').hidden = true; $('#lockPw').value = ''; $('#lockPw2').value = '';
+  $('#lockBtn').textContent = 'Öffnen';
+  lockMsg(reason === 'falsch' ? 'Passwort falsch oder geändert – bitte (neu) eingeben.' : 'Bitte Passwort eingeben.', reason === 'falsch');
+  setTimeout(() => $('#lockPw').focus(), 50);
+}
+function lockMsg(t, err){ const m = $('#lockMsg'); m.textContent = t; m.classList.toggle('err', !!err); }
+async function unlock(e){
+  e.preventDefault();
+  const pw = $('#lockPw').value;
+  if (!pw) return;
+  if (LOCK_NEW) {
+    if (pw.length < 6) return lockMsg('Bitte mindestens 6 Zeichen.', true);
+    if (pw !== $('#lockPw2').value) return lockMsg('Die beiden Passwörter sind verschieden.', true);
+    return finishUnlock(pw, null, true);
+  }
+  $('#lockBtn').disabled = true; lockMsg('Prüfe …');
+  try {
+    const {raw} = await fetchRemote();
+    if (!raw) {
+      LOCK_NEW = true; $('#lockPw2').hidden = false; $('#lockBtn').textContent = 'Passwort festlegen';
+      lockMsg('Noch keine Daten im Repo – lege jetzt das Passwort fest (2× eingeben). Ohne dieses Passwort kann niemand die Daten lesen.');
+      $('#lockPw2').focus(); return;
+    }
+    let remote;
+    try { remote = await openRemote(raw, pw); } catch(err) { return lockMsg('Passwort falsch.', true); }
+    finishUnlock(pw, remote, false);
+  } catch(err) {
+    lockMsg('Keine Verbindung zu GitHub – das Passwort kann gerade nicht geprüft werden.', true);
+  } finally { $('#lockBtn').disabled = false; }
+}
+function finishUnlock(pw, remote, isNew){
+  PW = pw; localStorage.setItem(LS_PW, pw);
+  if (remote) S = mergeData(S, remote);
+  if (isNew) { DIRTY = true; localStorage.setItem(LS_DIRTY, '1'); }
+  persistLocal();
+  $('#lock').hidden = true;
+  go('truhe'); sync(); checkNotify();
+}
+
+
+/* ================== Helfer ================== */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const pad = n => String(n).padStart(2,'0');
+const isoOf = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today = () => isoOf(new Date());
+const parseIso = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const fmtDate = s => s ? s.split('-').reverse().join('.') : '';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const euro = n => (Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+const nrTxt = n => '#'+String(n).padStart(3,'0');
+function addMonths(iso, n){ const d = parseIso(iso); const day = d.getDate(); d.setMonth(d.getMonth()+n); if (d.getDate() < day) d.setDate(0); return isoOf(d); }
+function daysBetween(a, b){ return Math.round((parseIso(b) - parseIso(a)) / 86400000); }
+function ageTxt(iso){
+  const t = daysBetween(iso, today());
+  if (t < 0) return 'Datum in der Zukunft';
+  if (t < 1) return 'heute';
+  if (t < 45) return t + (t===1?' Tag':' Tage');
+  const m = Math.floor(t/30.44);
+  return m + (m===1?' Monat':' Monate') + (t%30.44 >= 15 ? ' ½' : '');
+}
+function deadline(it){ return addMonths(it.datum, S.cfg.monate); }
+function ampel(it){
+  const rest = daysBetween(today(), deadline(it));
+  if (rest <= 0) return 'rot';
+  if (rest <= S.cfg.vorwarnTage) return 'gelb';
+  return 'gruen';
+}
+function unitOf(art, teil){ return S.preise[art]?.[teil]?.e || 'kg'; }
+function calcPreis(art, teil, gramm, anzahl){
+  const pr = S.preise[art]?.[teil]; if (!pr) return 0;
+  const v = pr.e === 'kg' ? pr.p * (Number(gramm)||0) / 1000 : pr.p * (Number(anzahl)||1);
+  const r = Number(S.cfg.runden) || 0;
+  return r ? Math.round(v / r) * r : Math.round(v*100)/100;
+}
+function mengeTxt(it){
+  const g = Number(it.gramm)||0;
+  const gt = g ? (g >= 1000 ? (g/1000).toLocaleString('de-DE',{maximumFractionDigits:2})+' kg' : g+' g') : '';
+  if (unitOf(it.art, it.teil) === 'stk') return (it.anzahl||1)+' Stk'+(gt ? ' · '+gt : '');
+  return gt || 'Gewicht fehlt';
+}
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'), 2200); }
+function download(name, text, type){
+  const blob = new Blob([text], {type});
+  const file = new File([blob], name, {type});
+  if (navigator.canShare && navigator.canShare({files:[file]}) && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+    navigator.share({files:[file], title:name}).catch(()=>{});
+    return;
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 500);
+}
+
+function addItem(o){
+  S.seq += 1;
+  const it = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+    nr: S.seq, art:o.art, teil:o.teil,
+    gramm: Number(o.gramm)||0, anzahl: Number(o.anzahl)||1,
+    datum: o.datum || today(),
+    preis: o.preisManuell ? Number(o.preis)||0 : calcPreis(o.art, o.teil, o.gramm, o.anzahl),
+    preisManuell: !!o.preisManuell,
+    notiz: o.notiz || '', status:'truhe', angelegt: today(), geaendert: Date.now()
+  };
+  S.items.push(it);
+  return it;
+}
+const inTruhe = () => S.items.filter(i => i.status === 'truhe');
+const raus = () => S.items.filter(i => i.status !== 'truhe');
+
+/* ================== Navigation ================== */
+let TAB = 'truhe', FILTER = 'Alle', SORT = 'alt';
+function go(tab){ TAB = tab; $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab)); render(); window.scrollTo(0,0); }
+$$('#nav button').forEach(b => b.onclick = () => go(b.dataset.tab));
+
+function render(){
+  const t = inTruhe();
+  const kg = t.reduce((s,i)=>s+(Number(i.gramm)||0),0)/1000;
+  $('#hsub').textContent = t.length + ' Pakete in der Truhe · ' + kg.toLocaleString('de-DE',{maximumFractionDigits:1}) + ' kg';
+  ({truhe:viewTruhe, neu:viewNeu, verlauf:viewVerlauf, mehr:viewMehr})[TAB]();
+}
+
+/* ================== Truhe ================== */
+function viewTruhe(){
+  const all = inTruhe();
+  const rot = all.filter(i => ampel(i) === 'rot'), gelb = all.filter(i => ampel(i) === 'gelb');
+  const wert = all.reduce((s,i)=>s+(Number(i.preis)||0),0);
+  const kg = all.reduce((s,i)=>s+(Number(i.gramm)||0),0)/1000;
+  const arten = Object.keys(S.preise).filter(a => all.some(i => i.art === a));
+  if (FILTER !== 'Alle' && !arten.includes(FILTER)) FILTER = 'Alle';
+  let list = all.filter(i => FILTER === 'Alle' || i.art === FILTER);
+  const sorters = {
+    alt: (a,b) => a.datum.localeCompare(b.datum) || a.nr - b.nr,
+    neu: (a,b) => b.datum.localeCompare(a.datum) || b.nr - a.nr,
+    nr:  (a,b) => a.nr - b.nr,
+    art: (a,b) => a.art.localeCompare(b.art) || a.teil.localeCompare(b.teil) || a.datum.localeCompare(b.datum)
+  };
+  list.sort(sorters[SORT]);
+
+  let h = `<div class="stats">
+    <div class="stat"><b>${all.length}</b><span>Pakete</span></div>
+    <div class="stat"><b>${kg.toLocaleString('de-DE',{maximumFractionDigits:1})}</b><span>kg</span></div>
+    <div class="stat"><b>${euro(wert).replace(/,00/,'')}</b><span>Warenwert</span></div></div>`;
+  if (rot.length) h += `<div class="banner bad">⏰ <b>${rot.length} ${rot.length===1?'Paket ist':'Pakete sind'} älter als ${S.cfg.monate} Monate</b> – das muss langsam weg.</div>`;
+  if (gelb.length) h += `<div class="banner warn">${gelb.length} ${gelb.length===1?'Paket erreicht':'Pakete erreichen'} in den nächsten ${S.cfg.vorwarnTage} Tagen die ${S.cfg.monate}-Monats-Grenze.</div>`;
+  if (!all.length) {
+    h += `<div class="empty">Die Truhe ist leer.<br><br><button class="btn pri" onclick="go('neu')">➕ Erstes Paket eintragen</button></div>`;
+    $('#view').innerHTML = h; return;
+  }
+  h += `<div class="chips">${['Alle', ...arten].map(a => `<button class="chip ${a===FILTER?'on':''}" data-f="${esc(a)}">${esc(a)} ${a==='Alle'?all.length:all.filter(i=>i.art===a).length}</button>`).join('')}</div>
+  <div class="row" style="margin-bottom:10px">
+    <select id="sort" style="width:auto;padding:7px 10px">
+      <option value="alt">Älteste zuerst</option><option value="neu">Neueste zuerst</option>
+      <option value="nr">Nach Nummer</option><option value="art">Nach Wildart</option>
+    </select><span class="spacer"></span>
+    <button class="btn sm" id="share">📤 Angebot teilen</button>
+  </div>`;
+  h += list.map(itemRow).join('');
+  $('#view').innerHTML = h;
+  $('#sort').value = SORT;
+  $('#sort').onchange = e => { SORT = e.target.value; render(); };
+  $$('.chip').forEach(c => c.onclick = () => { FILTER = c.dataset.f; render(); });
+  $$('.item').forEach(el => el.onclick = () => openSheet(el.dataset.id));
+  $('#share').onclick = shareOffer;
+}
+function itemRow(i){
+  const a = ampel(i);
+  const badge = a === 'rot' ? '<span class="badge rot">muss weg</span>' : a === 'gelb' ? '<span class="badge gelb">bald</span>' : '';
+  return `<div class="item ${a}" data-id="${i.id}">
+    <div class="nr">${nrTxt(i.nr)}</div>
+    <div class="main"><div class="t">${esc(i.art)} · ${esc(i.teil)}${badge}</div>
+      <div class="m">${esc(mengeTxt(i))} · ❄️ ${fmtDate(i.datum)} · ${ageTxt(i.datum)}${i.notiz?' · '+esc(i.notiz):''}</div></div>
+    <div class="p">${euro(i.preis)}</div></div>`;
+}
+
+function shareOffer(){
+  const list = inTruhe().filter(i => FILTER === 'Alle' || i.art === FILTER);
+  if (!list.length) return toast('Nichts zum Anbieten');
+  let txt = '*Wildfleisch aus eigener Jagd* 🦌\nvakuumiert & eingefroren\n';
+  for (const art of Object.keys(S.preise)) {
+    const l = list.filter(i => i.art === art).sort((a,b)=>a.teil.localeCompare(b.teil)||a.nr-b.nr);
+    if (!l.length) continue;
+    txt += `\n*${art}*\n` + l.map(i => `• ${i.teil}, ${mengeTxt(i)} – ${euro(i.preis)} (Nr. ${i.nr})`).join('\n') + '\n';
+  }
+  txt += '\nEinfach Nummer schicken, dann lege ich es zurück 👍';
+  if (navigator.share) navigator.share({text:txt}).catch(()=>{});
+  else navigator.clipboard.writeText(txt).then(()=>toast('Angebot kopiert'), ()=>prompt('Text kopieren:', txt));
+}
+
+/* ================== Formularfelder (Neu & Bearbeiten) ================== */
+function fieldsHTML(it, withPakete){
+  const arten = Object.keys(S.preise);
+  return `<div class="grid2">
+    <div><label>Wildart</label><select data-f="art">${arten.map(a=>`<option ${a===it.art?'selected':''}>${esc(a)}</option>`).join('')}</select></div>
+    <div><label>Teilstück</label><select data-f="teil"></select></div>
+    <div><label data-l="g">Gewicht (g)</label><input data-f="gramm" type="number" inputmode="numeric" min="0" step="10" value="${it.gramm||''}" placeholder="z. B. 850"></div>
+    <div data-w="anzahl"><label>Anzahl Stück</label><input data-f="anzahl" type="number" inputmode="numeric" min="1" value="${it.anzahl||1}"></div>
+    <div><label>Eingefroren am</label><input data-f="datum" type="date" value="${it.datum||today()}"></div>
+    <div><label>Preis (€) <span data-l="auto"></span></label>
+      <div class="row"><input data-f="preis" type="number" inputmode="decimal" step="0.5" min="0" value="${it.preis ?? ''}">
+      <button type="button" class="btn sm" data-a="auto" title="Automatisch">↺</button></div></div>
+    ${withPakete ? `<div><label>Gleiche Pakete</label><input data-f="pakete" type="number" inputmode="numeric" min="1" max="50" value="1"></div>` : ''}
+  </div>
+  <label>Notiz</label><input data-f="notiz" value="${esc(it.notiz||'')}" placeholder="z. B. Bock vom 12.10., reserviert für …">`;
+}
+function bindFields(root, it){
+  const f = n => root.querySelector(`[data-f="${n}"]`);
+  let manuell = !!it.preisManuell;
+  const fillTeil = (keep) => {
+    const art = f('art').value, teile = Object.keys(S.preise[art] || {});
+    f('teil').innerHTML = teile.map(t => `<option ${t===keep?'selected':''}>${esc(t)}</option>`).join('');
+  };
+  const update = () => {
+    const art = f('art').value, teil = f('teil').value, stk = unitOf(art, teil) === 'stk';
+    root.querySelector('[data-w="anzahl"]').style.display = stk ? '' : 'none';
+    root.querySelector('[data-l="g"]').textContent = stk ? 'Gewicht (g, optional)' : 'Gewicht (g)';
+    const pr = S.preise[art]?.[teil];
+    root.querySelector('[data-l="auto"]').textContent = pr ? `· ${euro(pr.p)}/${pr.e==='kg'?'kg':'Stk'}${manuell?' · manuell':''}` : '';
+    if (!manuell) f('preis').value = calcPreis(art, teil, f('gramm').value, f('anzahl').value);
+  };
+  fillTeil(it.teil);
+  f('art').onchange = () => { fillTeil(); update(); };
+  ['teil','gramm','anzahl'].forEach(n => f(n).addEventListener('input', update));
+  f('preis').addEventListener('input', () => { manuell = true; update(); });
+  root.querySelector('[data-a="auto"]').onclick = () => { manuell = false; update(); };
+  update();
+  return () => ({
+    art: f('art').value, teil: f('teil').value,
+    gramm: Number(f('gramm').value)||0, anzahl: Math.max(1, Number(f('anzahl').value)||1),
+    datum: f('datum').value || today(), preis: Number(f('preis').value)||0, preisManuell: manuell,
+    notiz: f('notiz').value.trim(), pakete: f('pakete') ? Math.min(50, Math.max(1, Number(f('pakete').value)||1)) : 1
+  });
+}
+
+/* ================== Neu (Diktat + Formular) ================== */
+let PREVIEW = [];
+let lastForm = {art:'Reh', datum: null};
+function viewNeu(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  $('#view').innerHTML = `
+  <div class="card">
+    <h2>🎙️ Per Diktat</h2>
+    <div class="row" style="align-items:flex-start">
+      ${SR ? '<button class="btn mic" id="mic" aria-label="Diktat starten">🎤</button>' : ''}
+      <textarea id="dtext" placeholder="z. B. „Reh Keule 850 Gramm, Rehrücken 620 Gramm, Damwild Hack 3 Pakete je 500 Gramm, eingefroren am 2. November“"></textarea>
+    </div>
+    <div class="hint">${SR ? 'Mikro antippen und sprechen – ' : 'Tipp: Mikrofon-Taste auf der Tastatur nutzen – '}mehrere Pakete mit „und“ oder Komma trennen. Ohne Datum gilt heute.</div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="parse">Erkennen</button><span class="spacer"></span><button class="btn sm" id="clr">Leeren</button></div>
+    <div id="prev"></div>
+  </div>
+  <div class="card" id="mform">
+    <h2>✍️ Von Hand</h2>
+    ${fieldsHTML({art:lastForm.art, datum:lastForm.datum||today()}, true)}
+    <button class="btn pri full" id="add" style="margin-top:14px">In die Truhe legen</button>
+  </div>`;
+  const read = bindFields($('#mform'), {art:lastForm.art});
+  $('#add').onclick = () => {
+    const o = read();
+    if (unitOf(o.art,o.teil)==='kg' && !o.gramm) return toast('Bitte Gewicht eintragen');
+    const nrs = [];
+    for (let k=0; k<o.pakete; k++) nrs.push(addItem(o).nr);
+    lastForm = {art:o.art, datum:o.datum};
+    save(); toast(nrs.length>1 ? `${nrs.length} Pakete: ${nrTxt(nrs[0])}–${nrTxt(nrs.at(-1))}` : `Paket ${nrTxt(nrs[0])} – auf die Tüte schreiben!`);
+    $('[data-f="gramm"]').value = ''; $('[data-f="notiz"]').value = ''; $('[data-f="pakete"]').value = 1;
+    $('[data-f="gramm"]').dispatchEvent(new Event('input'));
+    $('#hsub').textContent = inTruhe().length + ' Pakete in der Truhe';
+  };
+  $('#parse').onclick = () => { PREVIEW = parseDiktat($('#dtext').value); renderPreview(); };
+  $('#clr').onclick = () => { $('#dtext').value = ''; PREVIEW = []; renderPreview(); };
+  if (SR) setupMic(SR);
+  renderPreview();
+}
+function renderPreview(){
+  const box = $('#prev'); if (!box) return;
+  if (!PREVIEW.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<h3>Erkannt – bitte prüfen</h3>' + PREVIEW.map((p,k) => {
+    const bad = !p.art || !p.teil || (unitOf(p.art,p.teil)==='kg' && !p.gramm);
+    const preis = p.preisManuell ? p.preis : calcPreis(p.art, p.teil, p.gramm, p.anzahl);
+    return `<div class="prev ${bad?'err':''}"><div class="main">
+      <b>${esc(p.art||'?')} · ${esc(p.teil||'Teilstück?')}</b>${p.pakete>1?` <span class="badge grau">${p.pakete}×</span>`:''}<br>
+      <span class="hint" style="margin:0">${p.art&&p.teil?esc(mengeTxt(p)):'–'} · ❄️ ${fmtDate(p.datum)} · ${euro(preis)}${p.pakete>1?' je Paket':''}</span>
+      <div class="hint" style="margin:2px 0 0;font-style:italic">„${esc(p.roh)}“</div></div>
+      <button class="btn sm" data-ed="${k}">✎</button><button class="x" data-del="${k}">✕</button></div>`;
+  }).join('') + `<button class="btn pri full" id="takeall" style="margin-top:10px">Alle in die Truhe legen</button>`;
+  $$('[data-del]', box).forEach(b => b.onclick = () => { PREVIEW.splice(+b.dataset.del,1); renderPreview(); });
+  $$('[data-ed]', box).forEach(b => b.onclick = () => {
+    const p = PREVIEW[+b.dataset.ed];
+    if (p.art) { $('[data-f="art"]').value = p.art; $('[data-f="art"]').onchange(); }
+    if (p.teil) { $('[data-f="teil"]').value = p.teil; }
+    $('[data-f="gramm"]').value = p.gramm || ''; $('[data-f="anzahl"]').value = p.anzahl || 1;
+    $('[data-f="datum"]').value = p.datum; $('[data-f="pakete"]').value = p.pakete || 1;
+    $('[data-f="gramm"]').dispatchEvent(new Event('input'));
+    if (p.preisManuell) { $('[data-f="preis"]').value = p.preis; $('[data-f="preis"]').dispatchEvent(new Event('input')); }
+    PREVIEW.splice(+b.dataset.ed,1); renderPreview();
+    $('#mform').scrollIntoView({behavior:'smooth'});
+  });
+  $('#takeall').onclick = () => {
+    const ok = PREVIEW.filter(p => p.art && p.teil && !(unitOf(p.art,p.teil)==='kg' && !p.gramm));
+    if (!ok.length) return toast('Nichts Vollständiges erkannt – ✎ zum Ergänzen');
+    const nrs = [];
+    ok.forEach(p => { for (let k=0;k<(p.pakete||1);k++) nrs.push(addItem(p).nr); });
+    PREVIEW = PREVIEW.filter(p => !ok.includes(p));
+    $('#dtext').value = '';
+    save(); renderPreview();
+    toast(nrs.length===1 ? `Paket ${nrTxt(nrs[0])} eingelagert` : `${nrs.length} Pakete: ${nrTxt(nrs[0])}–${nrTxt(nrs.at(-1))}`);
+    $('#hsub').textContent = inTruhe().length + ' Pakete in der Truhe';
+  };
+}
+let REC = null;
+function setupMic(SR){
+  const btn = $('#mic');
+  btn.onclick = () => {
+    if (REC) { REC.stop(); return; }
+    const r = new SR(); r.lang = 'de-DE'; r.interimResults = true; r.continuous = false;
+    const ta = $('#dtext'); const base = ta.value ? ta.value.trim() + ', ' : '';
+    r.onresult = e => { let t=''; for (const res of e.results) t += res[0].transcript; ta.value = base + t; };
+    r.onerror = e => { if (e.error === 'not-allowed') toast('Mikrofon nicht erlaubt'); else if (e.error !== 'no-speech' && e.error !== 'aborted') toast('Diktat: ' + e.error); };
+    r.onend = () => { REC = null; btn.classList.remove('rec'); if (ta.value.trim()) { PREVIEW = parseDiktat(ta.value); renderPreview(); } };
+    try { r.start(); REC = r; btn.classList.add('rec'); } catch(e){ toast('Diktat nicht möglich'); }
+  };
+}
+
+/* ================== Diktat-Parser ================== */
+const ZAHLWORT = {ein:1,eine:1,einen:1,einem:1,zwei:2,drei:3,vier:4,'fünf':5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,'zwölf':12};
+const MONATE = {januar:1,jänner:1,februar:2,'märz':3,maerz:3,april:4,mai:5,juni:6,juli:7,august:8,september:9,oktober:10,november:11,dezember:12};
+function artOf(t){
+  if (/\breh/.test(t)) return 'Reh';
+  if (/\bdam+(?:wild|hirsch|tier|kalb|spie|schmal|\b)/.test(t) || /\bhirsch/.test(t)) return 'Damwild';
+  if (/\bhase|\bhasen/.test(t)) return 'Hase';
+  if (/fasan/.test(t)) return 'Fasan';
+  if (/\bente\b|\benten|stockente/.test(t)) return 'Ente';
+  // eigene Wildarten aus den Einstellungen
+  for (const a of Object.keys(S.preise)) if (t.includes(a.toLowerCase())) return a;
+  return null;
+}
+function teilOf(art, t){
+  const has = n => S.preise[art] && S.preise[art][n] ? n : null;
+  t = t.replace(/mit\s+(zwei|beiden)\s+keulen/, 'mit 2 keulen');
+  // zuerst Teilstücke mit vollem Namen (längste zuerst, damit „Rücken mit 2 Keulen“ vor „Rücken“ greift)
+  for (const n of Object.keys(S.preise[art]||{}).sort((a,b)=>b.length-a.length)) if (t.includes(n.toLowerCase())) return n;
+  if (art === 'Hase') {
+    if (/rücken\s+mit\s+(2|zwei|beiden)\s+keulen/.test(t)) return has('Rücken mit 2 Keulen');
+    if (/keule/.test(t)) return has('Keulen (Paar)');
+    if (/rücken/.test(t)) return has('Rücken');
+    return has('komplett');
+  }
+  if (art === 'Fasan' || art === 'Ente') { if (/brust|brüste/.test(t)) return has('Brust (Paar)'); return has('komplett'); }
+  if (/filet/.test(t)) return has('Filet');
+  if (/rücken/.test(t)) return has('Rücken') || has('Rückenstrang');
+  if (/keule|braten/.test(t)) return has('Keule') || has('Keule / Braten');
+  if (/hack/.test(t)) return has('Hackfleisch');
+  if (/wurst|salami|knacker|mettwurst|leberwurst/.test(t)) return has('Wurst');
+  if (/gulasch/.test(t)) return has('Gulasch');
+  for (const n of Object.keys(S.preise[art]||{})) { const w = n.toLowerCase().split(/[\s/(]/)[0]; if (w.length>3 && t.includes(w)) return n; }
+  return null;
+}
+const SEG_TRIGGER = /keule|rücken|ruecken|filet|wurst|salami|hack|braten|komplett|brust|fasan|\bente|\benten|\bhase|gulasch/;
+function parseDiktat(text){
+  if (!text.trim()) return [];
+  let all = text.toLowerCase().replace(/ruecken/g,'rücken').replace(/\s+/g,' ');
+  // globales Datum ("eingefroren am …") gilt für alle ohne eigenes Datum
+  const gDate = findDate(all);
+  const raw = all.split(/[;\n]+|,\s*(?=\D)|\s+und\s+(?:dann\s+)?|\s+dann\s+|\s+sowie\s+/).map(s=>s.trim()).filter(Boolean);
+  const groups = [];
+  for (const p of raw) {
+    if (SEG_TRIGGER.test(p) || !groups.length) groups.push(p);
+    else groups[groups.length-1] += ' ' + p;
+  }
+  const out = []; let lastArt = null;
+  for (let g of groups) {
+    const roh = g;
+    // Zahlwörter
+    g = g.replace(/\b(eineinhalb|anderthalb)\b/g,'1,5').replace(/\b(ein\s+)?halbes?\s+(kilo|kg)/g,'0,5 kg').replace(/\bein\s+viertel\s+(kilo|kg)/g,'0,25 kg');
+    g = g.replace(/\b(ein|eine|einen|einem|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf)\b(?=\s+(pakete?|päckchen|beutel|tüten|portionen|stück|stk|kilo|kg|gramm|g\b|fasan|enten?|hasen?|keulen|brüste))/g, m => ZAHLWORT[m]);
+    const art = artOf(g) || lastArt; if (artOf(g)) lastArt = artOf(g);
+    if (!art) { out.push({roh, art:null, teil:null, datum: gDate||today(), pakete:1, anzahl:1, gramm:0}); continue; }
+    const teil = teilOf(art, g);
+    let preis = null, m;
+    if ((m = g.match(/(\d+(?:[.,]\d+)?)\s*(€|euro)/))) { preis = parseFloat(m[1].replace(',','.')); g = g.replace(m[0],' '); }
+    let pakete = 1;
+    if ((m = g.match(/(\d+)\s*(pakete?|päckchen|beutel|tüten|portionen)/))) { pakete = Math.min(50, +m[1]); g = g.replace(m[0],' '); }
+    let gramm = 0;
+    if ((m = g.match(/(\d+(?:[.,]\d+)?)\s*(kilogramm|kilo|kg)\b/))) { gramm = Math.round(parseFloat(m[1].replace(',','.'))*1000); g = g.replace(m[0],' '); }
+    else if ((m = g.match(/(\d+(?:[.,]\d+)?)\s*(gramm|gr|g)\b/))) { gramm = Math.round(parseFloat(m[1].replace(',','.'))); g = g.replace(m[0],' '); }
+    const d = findDate(g, true);
+    let datum = gDate || today();
+    if (d) { datum = d.iso; g = g.replace(d.raw,' '); }
+    let anzahl = 1;
+    const stk = teil && unitOf(art, teil) === 'stk';
+    const rest = g.replace(/rücken\s+mit\s+(2|zwei|beiden)\s+keulen/,' ').match(/\b(\d+(?:[.,]\d+)?)\b/);
+    if (rest) {
+      const n = parseFloat(rest[1].replace(',','.'));
+      if (stk) anzahl = Math.max(1, Math.round(n));
+      else if (!gramm) gramm = n < 20 ? Math.round(n*1000) : Math.round(n);
+    }
+    out.push({roh, art, teil, gramm, anzahl, datum, pakete, preis: preis ?? 0, preisManuell: preis != null, notiz:''});
+  }
+  return out;
+}
+function findDate(t, withRaw){
+  let m, d = null, raw = null;
+  const now = new Date(); const y0 = now.getFullYear();
+  const fix = (dd, mm, yy) => {
+    let y = yy ? (yy < 100 ? 2000 + yy : yy) : y0;
+    let dt = new Date(y, mm-1, dd);
+    if (!yy && dt > now) dt = new Date(y-1, mm-1, dd);
+    return (dt.getMonth() === mm-1) ? isoOf(dt) : null;
+  };
+  if ((m = t.match(/(\d{1,2})\.\s*(\d{1,2})\.(?:\s*(\d{2,4}))?/))) { d = fix(+m[1], +m[2], m[3] ? +m[3] : 0); raw = m[0]; }
+  else if ((m = t.match(new RegExp('(\\d{1,2})\\.?\\s*(' + Object.keys(MONATE).join('|') + ')(?:\\s+(\\d{4}))?')))) { d = fix(+m[1], MONATE[m[2]], m[3] ? +m[3] : 0); raw = m[0]; }
+  else if ((m = t.match(/\bvorgestern\b/))) { const x = new Date(); x.setDate(x.getDate()-2); d = isoOf(x); raw = m[0]; }
+  else if ((m = t.match(/\bgestern\b/))) { const x = new Date(); x.setDate(x.getDate()-1); d = isoOf(x); raw = m[0]; }
+  else if ((m = t.match(/\bletzte\s+woche\b/))) { const x = new Date(); x.setDate(x.getDate()-7); d = isoOf(x); raw = m[0]; }
+  else if ((m = t.match(/\bheute\b/))) { d = today(); raw = m[0]; }
+  if (!d) return null;
+  return withRaw ? {iso:d, raw} : d;
+}
+
+/* ================== Bearbeiten / Abgang ================== */
+function openSheet(id){
+  const it = S.items.find(i => i.id === id); if (!it) return;
+  const ov = document.createElement('div'); ov.className = 'overlay';
+  const truhe = it.status === 'truhe';
+  const ab = it.abgang || {};
+  ov.innerHTML = `<div class="sheet" id="sheet">
+    <div class="h"><b>${nrTxt(it.nr)} · ${esc(it.art)} ${esc(it.teil)}</b><button class="x" data-close>✕</button></div>
+    <div class="hint" style="margin:0 0 4px">❄️ ${fmtDate(it.datum)} · ${ageTxt(it.datum)} · weg bis ${fmtDate(deadline(it))}${truhe?'':' · <b>'+STATUS[it.status]+'</b>'}</div>
+    <div id="sf">${fieldsHTML(it, false)}</div>
+    <button class="btn full" id="savef" style="margin-top:12px">Änderungen speichern</button>
+    <div class="sep"></div>
+    <h2>${truhe ? 'Aus der Truhe nehmen' : 'Abgang'}</h2>
+    <div class="grid2">
+      <div><label>An / Käufer</label><input id="ak" value="${esc(ab.kaeufer||'')}" placeholder="Name"></div>
+      <div><label>Preis (€)</label><input id="ap" type="number" inputmode="decimal" step="0.5" value="${ab.preis ?? it.preis}"></div>
+      <div><label>Datum</label><input id="ad" type="date" value="${ab.datum || today()}"></div>
+      <div><label class="chk" style="margin-top:28px"><input type="checkbox" id="ab" ${ab.bezahlt?'checked':''}> bezahlt</label></div>
+    </div>
+    ${truhe ? `<div class="actions">
+      <button class="btn pri" data-st="verkauft">💶 Verkauft</button>
+      <button class="btn" data-st="verschenkt">🎁 Verschenkt</button>
+      <button class="btn" data-st="selbst">🍽️ Selbst verbraucht</button>
+      <button class="btn" data-st="entsorgt">🗑️ Entsorgt</button></div>`
+    : `<div class="actions"><button class="btn pri" id="saveab">Abgang speichern</button><button class="btn" id="back">↩︎ Zurück in die Truhe</button></div>`}
+    <div class="sep"></div>
+    <div class="actions">
+      <button class="btn" id="ics">📅 Kalender-Erinnerung</button>
+      <button class="btn bad" id="del">Löschen</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  const close = () => { ov.remove(); document.body.style.overflow = ''; render(); };
+  ov.onclick = e => { if (e.target === ov || e.target.hasAttribute('data-close')) close(); };
+  const read = bindFields($('#sf', ov), it);
+  const applyFields = () => { const o = read(); Object.assign(it, {art:o.art, teil:o.teil, gramm:o.gramm, anzahl:o.anzahl, datum:o.datum, preis:o.preis, preisManuell:o.preisManuell, notiz:o.notiz}); touch(it); };
+  const readAb = () => ({kaeufer: $('#ak',ov).value.trim(), preis: Number($('#ap',ov).value)||0, datum: $('#ad',ov).value || today(), bezahlt: $('#ab',ov).checked});
+  $('#savef', ov).onclick = () => { applyFields(); save(); toast('Gespeichert'); close(); };
+  $$('[data-st]', ov).forEach(b => b.onclick = () => {
+    applyFields();
+    const a = readAb();
+    if (b.dataset.st !== 'verkauft') { a.preis = 0; a.bezahlt = false; }
+    it.status = b.dataset.st; it.abgang = a; touch(it); save();
+    toast(`${nrTxt(it.nr)} → ${STATUS[it.status]}`); close();
+  });
+  if (!truhe) {
+    $('#saveab', ov).onclick = () => { applyFields(); it.abgang = readAb(); touch(it); save(); toast('Gespeichert'); close(); };
+    $('#back', ov).onclick = () => { it.status = 'truhe'; delete it.abgang; touch(it); save(); toast('Wieder in der Truhe'); close(); };
+  }
+  $('#ics', ov).onclick = () => exportICS([it]);
+  $('#del', ov).onclick = () => { if (confirm(`${nrTxt(it.nr)} wirklich löschen? (Für Verkauf lieber „Verkauft“ nutzen.)`)) { S.items = S.items.filter(x => x !== it); S.geloescht.push(it.id); save(); toast('Gelöscht'); close(); } };
+}
+
+/* ================== Verlauf ================== */
+let VFILTER = 'alle';
+function viewVerlauf(){
+  const all = raus().sort((a,b) => (b.abgang?.datum||'').localeCompare(a.abgang?.datum||'') || b.nr - a.nr);
+  const year = String(new Date().getFullYear());
+  const verk = all.filter(i => i.status === 'verkauft');
+  const summe = verk.reduce((s,i)=>s+(i.abgang?.preis||0),0);
+  const jahr = verk.filter(i => (i.abgang?.datum||'').startsWith(year)).reduce((s,i)=>s+(i.abgang?.preis||0),0);
+  const offen = verk.filter(i => !i.abgang?.bezahlt).reduce((s,i)=>s+(i.abgang?.preis||0),0);
+  const list = all.filter(i => VFILTER === 'alle' || (VFILTER === 'offen' ? (i.status==='verkauft' && !i.abgang?.bezahlt) : i.status === VFILTER));
+  let h = `<div class="stats">
+    <div class="stat"><b>${euro(jahr).replace(/,00/,'')}</b><span>verkauft ${year}</span></div>
+    <div class="stat"><b>${euro(summe).replace(/,00/,'')}</b><span>verkauft gesamt</span></div>
+    <div class="stat"><b style="color:${offen?'var(--warn)':'inherit'}">${euro(offen).replace(/,00/,'')}</b><span>noch offen</span></div></div>`;
+  if (!all.length) { $('#view').innerHTML = h + '<div class="empty">Noch nichts aus der Truhe genommen.</div>'; return; }
+  const fl = [['alle','Alle'],['offen','Offen'],['verkauft','Verkauft'],['verschenkt','Verschenkt'],['selbst','Selbst'],['entsorgt','Entsorgt']];
+  h += `<div class="chips">${fl.map(([k,l]) => `<button class="chip ${k===VFILTER?'on':''}" data-v="${k}">${l}</button>`).join('')}</div>`;
+  h += list.map(i => {
+    const a = i.abgang || {};
+    const pay = i.status === 'verkauft' ? `<span class="badge ${a.bezahlt?'ok':'gelb'} paid" data-pay="${i.id}">${a.bezahlt?'bezahlt':'offen'}</span>` : `<span class="badge grau">${STATUS[i.status]}</span>`;
+    return `<div class="item" style="border-left-color:var(--line)" data-id="${i.id}">
+      <div class="nr">${nrTxt(i.nr)}</div>
+      <div class="main"><div class="t">${esc(i.art)} · ${esc(i.teil)} ${pay}</div>
+      <div class="m">${esc(mengeTxt(i))} · ${fmtDate(a.datum)}${a.kaeufer?' · '+esc(a.kaeufer):''} · ❄️ ${fmtDate(i.datum)}</div></div>
+      <div class="p">${i.status==='verkauft'?euro(a.preis):''}</div></div>`;
+  }).join('') || '<div class="empty">Keine Einträge.</div>';
+  $('#view').innerHTML = h;
+  $$('.chip').forEach(c => c.onclick = () => { VFILTER = c.dataset.v; render(); });
+  $$('.item').forEach(el => el.onclick = e => {
+    if (e.target.dataset.pay) { const it = S.items.find(x => x.id === e.target.dataset.pay); it.abgang.bezahlt = !it.abgang.bezahlt; touch(it); save(); render(); return; }
+    openSheet(el.dataset.id);
+  });
+}
+
+/* ================== Mehr ================== */
+function viewMehr(){
+  const arten = Object.keys(S.preise);
+  const notif = ('Notification' in window) ? Notification.permission : 'nicht verfügbar';
+  const syncTxt = {ok:'☁️ Mit GitHub synchron – verschlüsselt gespeichert.', busy:'⏳ Wird gespeichert …', local:'📱 Änderungen liegen nur auf diesem Gerät – zum Hochladen GitHub-Token eintragen.', err:'⚠️ ' + SYNC.msg}[SYNC.st] || '–';
+  $('#view').innerHTML = `
+  <div class="card"><h2>🔒 Passwort & GitHub</h2>
+    <div class="hint" style="margin-top:0">${esc(syncTxt)}</div>
+    <div class="hint">Die Daten liegen verschlüsselt in <b>${esc(GH.owner)}/${esc(GH.repo)}</b> (${DATA_PATH}). Ohne Passwort ist dort nur Zeichensalat zu sehen – keine Namen, keine Preise.</div>
+    <div class="grid2">
+      <div><label>GitHub-Konto</label><input id="gho" value="${esc(GH.owner)}" autocapitalize="off"></div>
+      <div><label>Repo</label><input id="ghr" value="${esc(GH.repo)}" autocapitalize="off"></div>
+    </div>
+    <label>GitHub-Token (zum Speichern)</label>
+    <input id="ght" type="password" value="${esc(GH.token)}" placeholder="github_pat_…" autocomplete="off" autocapitalize="off">
+    <div class="hint">Fine-grained Token, nur für dieses Repo, Recht „Contents: Read and write“. Bleibt nur auf diesem Gerät.</div>
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn pri" id="ghs">Speichern & abgleichen</button>
+      <button class="btn" id="syncnow">↻ Jetzt abgleichen</button>
+    </div>
+    <h3>Passwort ändern</h3>
+    <div class="grid2">
+      <div><input id="np1" type="password" placeholder="Neues Passwort" autocomplete="new-password"></div>
+      <div><input id="np2" type="password" placeholder="Wiederholen" autocomplete="new-password"></div>
+    </div>
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn" id="pwch">Passwort ändern</button><span class="spacer"></span>
+      <button class="btn bad" id="lockdev">Gerät abmelden</button>
+    </div>
+    <div class="hint">„Gerät abmelden“ löscht Passwort und Daten von diesem Gerät – im Repo bleibt alles verschlüsselt erhalten.</div>
+  </div>
+  <div class="card"><h2>⏰ Erinnerung</h2>
+    <div class="grid2">
+      <div><label>Muss weg nach (Monaten)</label><input id="cm" type="number" min="1" max="24" value="${S.cfg.monate}"></div>
+      <div><label>Vorwarnung (Tage vorher)</label><input id="cv" type="number" min="0" max="120" value="${S.cfg.vorwarnTage}"></div>
+    </div>
+    <div class="hint">Beim Öffnen zeigt die App alles, was fällig ist. Für eine Erinnerung auch ohne die App zu öffnen: Kalender-Einträge erzeugen (je Paket ein Termin am Fälligkeitstag mit Alarm um 9 Uhr).</div>
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn" id="icsall">📅 Alle Pakete in Kalender</button>
+      <button class="btn" id="notif" ${notif!=='default'?'disabled':''}>🔔 Mitteilungen ${notif==='granted'?'aktiv':notif==='denied'?'blockiert':notif==='default'?'erlauben':'n. v.'}</button>
+    </div>
+  </div>
+  <div class="card"><h2>💶 Preise</h2>
+    <div class="row" style="gap:12px"><label style="margin:0">Runden auf</label>
+      <select id="rund" style="width:auto"><option value="0">Cent</option><option value="0.5">0,50 €</option><option value="1">1 €</option></select></div>
+    ${arten.map(a => `<h3>${esc(a)} <button class="x" data-delart="${esc(a)}" title="Wildart entfernen" style="font-size:.9rem">🗑</button></h3><table class="pr">${Object.entries(S.preise[a]).map(([t,p]) => `
+      <tr><td>${esc(t)}</td>
+      <td style="width:92px"><input type="number" inputmode="decimal" step="0.5" min="0" value="${p.p}" data-pa="${esc(a)}" data-pt="${esc(t)}"></td>
+      <td style="width:88px"><select data-ua="${esc(a)}" data-ut="${esc(t)}"><option value="kg" ${p.e==='kg'?'selected':''}>€/kg</option><option value="stk" ${p.e==='stk'?'selected':''}>€/Stk</option></select></td>
+      <td style="width:30px"><button class="x" data-dela="${esc(a)}" data-delt="${esc(t)}">✕</button></td></tr>`).join('')}</table>`).join('')}
+    <h3>Teilstück hinzufügen</h3>
+    <div class="grid2">
+      <div><label>Wildart (neu oder vorhanden)</label><input id="na" list="artlist" placeholder="z. B. Wildschwein"><datalist id="artlist">${arten.map(a=>`<option value="${esc(a)}">`).join('')}</datalist></div>
+      <div><label>Teilstück</label><input id="nt" placeholder="z. B. Gulasch"></div>
+      <div><label>Preis</label><input id="np" type="number" inputmode="decimal" step="0.5"></div>
+      <div><label>Einheit</label><select id="ne"><option value="kg">€/kg</option><option value="stk">€/Stk</option></select></div>
+    </div>
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn" id="addt">Hinzufügen</button><span class="spacer"></span>
+      <button class="btn sm" id="repr">Preise in der Truhe neu berechnen</button></div>
+    <div class="hint">Geänderte Preise gelten für neue Pakete. „Neu berechnen“ passt alle Pakete in der Truhe an (außer manuell gesetzte Preise).</div>
+  </div>
+  <div class="card"><h2>💾 Daten</h2>
+    <div class="hint" style="margin-top:0">Zusätzlich zur verschlüsselten Ablage im Repo kannst du eine Sicherung als Datei ziehen. Achtung: Die Sicherungsdatei ist <b>nicht</b> verschlüsselt.</div>
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn" id="bak">⬇︎ Sicherung</button>
+      <button class="btn" id="imp">⬆︎ Wiederherstellen</button>
+      <button class="btn" id="csv">📊 CSV (Excel)</button>
+    </div>
+    <input type="file" id="impf" accept=".json,application/json" hidden>
+    <div class="hint">Nächste Paketnummer: ${nrTxt(S.seq+1)}</div>
+  </div>`;
+  $('#ghs').onclick = () => {
+    GH.owner = $('#gho').value.trim(); GH.repo = $('#ghr').value.trim(); GH.token = $('#ght').value.trim(); saveGH();
+    toast('Gespeichert – gleiche ab …'); sync().then(() => { if (TAB === 'mehr') render(); });
+  };
+  $('#syncnow').onclick = () => { toast('Gleiche ab …'); sync().then(() => { if (TAB === 'mehr') render(); }); };
+  $('#pwch').onclick = async () => {
+    const a = $('#np1').value, b = $('#np2').value;
+    if (a.length < 6) return toast('Mindestens 6 Zeichen');
+    if (a !== b) return toast('Passwörter sind verschieden');
+    if (!GH.token) return toast('Dafür wird der GitHub-Token gebraucht');
+    if (!confirm('Passwort ändern? Auf anderen Geräten muss danach das neue Passwort eingegeben werden.')) return;
+    PREV_PW = PW; PW = a; localStorage.setItem(LS_PW, a);
+    DIRTY = true; localStorage.setItem(LS_DIRTY, '1');
+    await sync();
+    toast(PREV_PW ? 'Noch nicht hochgeladen – wird nachgeholt' : 'Passwort geändert ✓');
+    render();
+  };
+  $('#lockdev').onclick = () => {
+    if (DIRTY && !confirm('Es gibt Änderungen, die noch NICHT im Repo sind und dann verloren gehen. Trotzdem abmelden?')) return;
+    if (!DIRTY && !confirm('Passwort und Daten von diesem Gerät entfernen?')) return;
+    localStorage.removeItem(KEY); localStorage.removeItem(LS_DIRTY); DIRTY = false;
+    load(); showLock();
+  };
+  $('#rund').value = String(S.cfg.runden);
+  $('#rund').onchange = e => { S.cfg.runden = Number(e.target.value); saveMeta(); };
+  $('#cm').onchange = e => { S.cfg.monate = Math.max(1, Number(e.target.value)||6); saveMeta(); render(); };
+  $('#cv').onchange = e => { S.cfg.vorwarnTage = Math.max(0, Number(e.target.value)||0); saveMeta(); };
+  $$('[data-pa]').forEach(i => i.onchange = () => { S.preise[i.dataset.pa][i.dataset.pt].p = Number(i.value)||0; saveMeta(); toast('Preis gespeichert'); });
+  $$('[data-ua]').forEach(i => i.onchange = () => { S.preise[i.dataset.ua][i.dataset.ut].e = i.value; saveMeta(); });
+  $$('[data-dela]').forEach(b => b.onclick = () => { if (confirm(`„${b.dataset.delt}“ (${b.dataset.dela}) aus der Liste entfernen? Vorhandene Pakete bleiben.`)) { delete S.preise[b.dataset.dela][b.dataset.delt]; if (!Object.keys(S.preise[b.dataset.dela]).length) delete S.preise[b.dataset.dela]; saveMeta(); render(); } });
+  $$('[data-delart]').forEach(b => b.onclick = () => { if (confirm(`Wildart „${b.dataset.delart}“ samt Teilstücken aus der Preisliste entfernen? Vorhandene Pakete bleiben.`)) { delete S.preise[b.dataset.delart]; saveMeta(); render(); } });
+  $('#addt').onclick = () => {
+    const a = $('#na').value.trim(), t = $('#nt').value.trim();
+    if (!a || !t) return toast('Wildart und Teilstück angeben');
+    const ex = Object.keys(S.preise).find(x => x.toLowerCase() === a.toLowerCase()) || a;
+    S.preise[ex] = S.preise[ex] || {};
+    S.preise[ex][t] = {e: $('#ne').value, p: Number($('#np').value)||0};
+    saveMeta(); render(); toast('Hinzugefügt');
+  };
+  $('#repr').onclick = () => {
+    let n = 0; inTruhe().forEach(i => { if (!i.preisManuell) { i.preis = calcPreis(i.art, i.teil, i.gramm, i.anzahl); touch(i); n++; } });
+    save(); toast(n + ' Preise aktualisiert');
+  };
+  $('#icsall').onclick = () => { const l = inTruhe(); if (!l.length) return toast('Truhe ist leer'); exportICS(l); };
+  $('#notif').onclick = async () => { try { await Notification.requestPermission(); } catch(e){} render(); checkNotify(); };
+  $('#bak').onclick = () => download(`wildtruhe-sicherung-${today()}.json`, JSON.stringify({seq:S.seq, items:S.items, preise:S.preise, cfg:S.cfg}, null, 1), 'application/json');
+  $('#imp').onclick = () => $('#impf').click();
+  $('#impf').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (!Array.isArray(d.items)) throw 0;
+      if (!confirm(`Sicherung mit ${d.items.length} Einträgen laden? Die aktuellen Daten werden ersetzt.`)) return;
+      const keepDel = S.geloescht; S = normalize(d); const now = Date.now(); S.items.forEach(i => i.geaendert = now); S.metaZeit = now;
+      S.geloescht = [...new Set([...keepDel, ...S.geloescht])].filter(id => !S.items.some(i => i.id === id));
+      save(); render(); toast('Wiederhergestellt');
+    } catch(err) { toast('Datei ist keine gültige Sicherung'); }
+  };
+  $('#csv').onclick = () => {
+    const head = ['Nr','Wildart','Teilstück','Gewicht g','Anzahl','Eingefroren','Fällig','Preis','Status','Abgang','An/Käufer','Erlös','bezahlt','Notiz'];
+    const rows = S.items.slice().sort((a,b)=>a.nr-b.nr).map(i => [i.nr, i.art, i.teil, i.gramm||'', unitOf(i.art,i.teil)==='stk'?i.anzahl:'', fmtDate(i.datum), fmtDate(deadline(i)),
+      String(i.preis).replace('.',','), i.status==='truhe'?'Truhe':STATUS[i.status], fmtDate(i.abgang?.datum), i.abgang?.kaeufer||'',
+      i.status==='verkauft'?String(i.abgang?.preis??'').replace('.',','):'', i.status==='verkauft'?(i.abgang?.bezahlt?'ja':'nein'):'', i.notiz||'']);
+    const csv = '﻿' + [head, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+    download(`wildtruhe-${today()}.csv`, csv, 'text/csv');
+  };
+}
+
+/* ================== Kalender (.ics) ================== */
+function exportICS(items){
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const icsEsc = s => String(s).replace(/[\\;,]/g, m => '\\'+m).replace(/\n/g,'\\n');
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Wildtruhe//DE','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
+  for (const i of items) {
+    const d = deadline(i).replace(/-/g,''); const d2 = isoOf(new Date(parseIso(deadline(i)).getTime()+86400000)).replace(/-/g,'');
+    L.push('BEGIN:VEVENT', `UID:wildtruhe-${i.id}@wildtruhe`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${d2}`,
+      `SUMMARY:${icsEsc(`Wildtruhe ${nrTxt(i.nr)}: ${i.art} ${i.teil} muss weg`)}`,
+      `DESCRIPTION:${icsEsc(`${mengeTxt(i)}, eingefroren am ${fmtDate(i.datum)} – jetzt ${S.cfg.monate} Monate alt.`)}`,
+      'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(`${i.art} ${i.teil} (${nrTxt(i.nr)}) muss aus der Truhe`)}`,'TRIGGER;RELATED=START:PT9H','END:VALARM','END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  download(items.length === 1 ? `wildtruhe-${items[0].nr}.ics` : 'wildtruhe-erinnerungen.ics', L.join('\r\n'), 'text/calendar');
+}
+
+/* ================== Mitteilung beim Öffnen ================== */
+async function checkNotify(){
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (S.lastNotify === today()) return;
+  const rot = inTruhe().filter(i => ampel(i) === 'rot');
+  if (!rot.length) return;
+  const body = rot.slice(0,4).map(i => `${nrTxt(i.nr)} ${i.art} ${i.teil}`).join(', ') + (rot.length > 4 ? ' …' : '');
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) reg.showNotification(`${rot.length} Paket(e) müssen aus der Truhe`, {body, icon:'icon-192.png', tag:'wildtruhe'});
+    else new Notification(`${rot.length} Paket(e) müssen aus der Truhe`, {body});
+    S.lastNotify = today(); save();
+  } catch(e){}
+}
+
+/* ================== Start ================== */
+load();
+$('#lockForm').addEventListener('submit', unlock);
+if (!PW) showLock();
+else { go('truhe'); setSync(DIRTY ? (GH.token ? 'busy' : 'local') : ''); sync(); }
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').then(() => { if (PW) checkNotify(); }).catch(()=>{});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && PW) { if (TAB === 'truhe') render(); sync(); checkNotify(); } });
+window.addEventListener('online', () => { if (PW) sync(); });
+</script>
+</body>
+</html>
