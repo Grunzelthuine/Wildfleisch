@@ -145,16 +145,27 @@ table.pr input,table.pr select{padding:6px 8px}
 <script>
 'use strict';
 /* ================== Daten ================== */
-const APP_VERSION = '1.2.1'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
+const APP_VERSION = '1.2.2'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
 const KEY = 'wildtruhe_v1';
-// Startpreise (für Freunde, unteres bis mittleres Direktvermarkter-Niveau) – in "Mehr" änderbar
+// Startpreise für Freunde (unterer Bereich, Recherche 11/2026) – in „Mehr“ änderbar
 const DEFAULT_PREISE = {
-  'Reh':     {'Keule':{e:'kg',p:28}, 'Rücken':{e:'kg',p:45}, 'Filet':{e:'kg',p:50}, 'Wurst':{e:'kg',p:26}},
-  'Damwild': {'Keule / Braten':{e:'kg',p:26}, 'Rückenstrang':{e:'kg',p:42}, 'Filet':{e:'kg',p:48}, 'Hackfleisch':{e:'kg',p:15}},
-  'Hase':    {'Rücken':{e:'stk',p:10}, 'Keulen (Paar)':{e:'stk',p:10}, 'Rücken mit 2 Keulen':{e:'stk',p:16}, 'komplett':{e:'stk',p:18}},
-  'Fasan':   {'komplett':{e:'stk',p:10}, 'Brust (Paar)':{e:'stk',p:8}},
-  'Ente':    {'komplett':{e:'stk',p:8}, 'Brust (Paar)':{e:'stk',p:7}}
+  'Reh':     {'Keule':{e:'kg',p:24}, 'Rücken':{e:'kg',p:38}, 'Filet':{e:'kg',p:42}, 'Wurst':{e:'kg',p:20}},
+  'Damwild': {'Keule / Braten':{e:'kg',p:20}, 'Rückenstrang':{e:'kg',p:30}, 'Filet':{e:'kg',p:35}, 'Hackfleisch':{e:'kg',p:12}},
+  'Hase':    {'Rücken':{e:'stk',p:8}, 'Keulen (Paar)':{e:'stk',p:7}, 'Rücken mit 2 Keulen':{e:'stk',p:12}, 'komplett':{e:'stk',p:15}},
+  'Fasan':   {'komplett':{e:'stk',p:10}, 'Brust (Paar)':{e:'stk',p:6}},
+  'Ente':    {'komplett':{e:'stk',p:5}, 'Brust (Paar)':{e:'stk',p:4}}
 };
+// alte Startpreise (v1.0–1.2.1): nur Preise, die noch genau so stehen, werden einmalig umgestellt
+const PREISE_V1 = {'Reh|Keule':28,'Reh|Rücken':45,'Reh|Filet':50,'Reh|Wurst':26,'Damwild|Keule / Braten':26,'Damwild|Rückenstrang':42,'Damwild|Filet':48,'Damwild|Hackfleisch':15,
+  'Hase|Rücken':10,'Hase|Keulen (Paar)':10,'Hase|Rücken mit 2 Keulen':16,'Hase|komplett':18,'Fasan|komplett':10,'Fasan|Brust (Paar)':8,'Ente|komplett':8,'Ente|Brust (Paar)':7};
+function migratePreise(){
+  if ((S.cfg.preisStand || 1) >= 2) return;
+  for (const [k, alt] of Object.entries(PREISE_V1)) {
+    const [a, t] = k.split('|'); const cur = S.preise[a]?.[t], neu = DEFAULT_PREISE[a]?.[t];
+    if (cur && neu && cur.p === alt && cur.e === neu.e) cur.p = neu.p;
+  }
+  S.cfg.preisStand = 2; saveMeta();
+}
 const STATUS = {verkauft:'Verkauft', verschenkt:'Verschenkt', selbst:'Selbst verbraucht', entsorgt:'Entsorgt'};
 let S;
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -353,6 +364,7 @@ function finishUnlock(pw, remote, isNew){
   if (remote) S = mergeData(S, remote);
   if (isNew) { DIRTY = true; localStorage.setItem(LS_DIRTY, '1'); }
   persistLocal();
+  migratePreise();
   $('#lock').hidden = true;
   go('truhe'); sync(); checkNotify();
 }
@@ -1074,7 +1086,7 @@ document.addEventListener('click', () => { if (NEW_SW && !$('#updbar').hidden) s
 load();
 $('#lockForm').addEventListener('submit', unlock);
 if (!PW) showLock();
-else { go('truhe'); setSync(DIRTY ? (GH.token ? 'busy' : 'local') : ''); sync(); }
+else { migratePreise(); go('truhe'); setSync(DIRTY ? (GH.token ? 'busy' : 'local') : ''); sync(); }
 swInit();
 $('#reloadBtn').onclick = async () => {
   const b = $('#reloadBtn'); b.classList.add('spin');
