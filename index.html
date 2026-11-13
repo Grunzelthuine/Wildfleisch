@@ -145,7 +145,7 @@ table.pr input,table.pr select{padding:6px 8px}
 <script>
 'use strict';
 /* ================== Daten ================== */
-const APP_VERSION = '1.2.0'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
+const APP_VERSION = '1.2.1'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
 const KEY = 'wildtruhe_v1';
 // Startpreise (für Freunde, unteres bis mittleres Direktvermarkter-Niveau) – in "Mehr" änderbar
 const DEFAULT_PREISE = {
@@ -900,9 +900,12 @@ function viewMehr(){
     <div class="row wrap" style="margin-top:10px">
       <button class="btn" id="bak">⬇︎ Sicherung</button>
       <button class="btn" id="imp">⬆︎ Wiederherstellen</button>
+      <button class="btn" id="impadd">➕ Pakete importieren</button>
       <button class="btn" id="csv">📊 CSV (Excel)</button>
     </div>
     <input type="file" id="impf" accept=".json,application/json" hidden>
+    <input type="file" id="impaddf" accept=".json,application/json" hidden>
+    <div class="hint">„Wiederherstellen“ ersetzt alles durch die Sicherung. „Pakete importieren“ fügt die Pakete aus der Datei hinzu (mit neuen Nummern) – vorhandene bleiben.</div>
     <div class="hint">Nächste Paketnummer: ${nrTxt(S.seq+1)}</div>
   </div>`;
   $('#ghs').onclick = () => {
@@ -964,6 +967,24 @@ function viewMehr(){
       S.geloescht = [...new Set([...keepDel, ...S.geloescht])].filter(id => !S.items.some(i => i.id === id));
       save(); render(); toast('Wiederhergestellt');
     } catch(err) { toast('Datei ist keine gültige Sicherung'); }
+  };
+  $('#impadd').onclick = () => $('#impaddf').click();
+  $('#impaddf').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    let list;
+    try { const d = JSON.parse(await f.text()); list = Array.isArray(d) ? d : d.items; if (!Array.isArray(list) || !list.length) throw 0; }
+    catch(err) { return toast('Datei enthält keine Pakete'); }
+    const ok = list.filter(o => o && o.art && o.teil);
+    const raus = ok.filter(o => o.status && o.status !== 'truhe').length;
+    if (!confirm(`${ok.length} Pakete hinzufügen?\n${ok.length - raus} in die Truhe, ${raus} direkt in den Verlauf.`)) return;
+    const nrs = [];
+    for (const o of ok) {
+      const it = addItem({art:o.art, teil:o.teil, gramm:o.gramm, anzahl:o.anzahl, datum:o.datum, preis:o.preis, preisManuell: o.preis != null, notiz:o.notiz});
+      if (o.status && STATUS[o.status]) { it.status = o.status; it.abgang = Object.assign({kaeufer:'', preis:0, datum:today(), bezahlt:false}, o.abgang || {}); }
+      nrs.push(it.nr);
+    }
+    save(); render();
+    toast(`${nrs.length} Pakete importiert: ${nrTxt(nrs[0])}–${nrTxt(nrs.at(-1))}`);
   };
   $('#csv').onclick = () => {
     const head = ['Nr','Wildart','Teilstück','Gewicht g','Anzahl','Eingefroren','Fällig','Preis','Status','Abgang','An/Käufer','Erlös','bezahlt','Notiz'];
