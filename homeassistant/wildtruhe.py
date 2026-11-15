@@ -4,8 +4,13 @@ Liest die verschlüsselte data/wildtruhe.json aus dem Repo Grunzelthuine/Wildfle
 entschlüsselt sie lokal (Passwort aus /config/secrets.yaml: wildtruhe_passwort)
 und gibt eine Zusammenfassung als JSON für einen command_line-Sensor aus.
 Namen von Käufern werden NICHT ausgegeben.
+
+Aufruf:
+  wildtruhe.py                 -> Zusammenfassung (Sensor)
+  wildtruhe.py austragen NR    -> Paket NR als „Selbst verbraucht“ austragen
+                                  (braucht wildtruhe_github_token in secrets.yaml)
 """
-import base64, calendar, datetime as dt, json, os, re, sys, urllib.request
+import base64, calendar, datetime as dt, json, os, re, sys, urllib.error, urllib.request
 
 REPO = "Grunzelthuine/Wildfleisch"
 BRANCH = "main"
@@ -22,11 +27,11 @@ def fehler(msg):
     out({"bestand": None, "fehler": msg, "stand": dt.datetime.now().isoformat(timespec="seconds")})
 
 
-def passwort():
+def secret(name, pflicht=True):
     try:
         with open(SECRETS, encoding="utf-8") as f:
             for line in f:
-                m = re.match(r'^\s*wildtruhe_passwort\s*:\s*(.+?)\s*$', line)
+                m = re.match(r'^\s*' + name + r'\s*:\s*(.+?)\s*$', line)
                 if m:
                     v = m.group(1)
                     if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":
@@ -34,10 +39,36 @@ def passwort():
                     return v
     except OSError as e:
         fehler(f"secrets.yaml nicht lesbar: {e}")
-    fehler("wildtruhe_passwort fehlt in secrets.yaml")
+    if pflicht:
+        fehler(f"{name} fehlt in secrets.yaml")
+    return None
+
+
+def passwort():
+    return secret("wildtruhe_passwort")
+
+
+API = f"https://api.github.com/repos/{REPO}/contents/{PFAD}"
+
+
+def api_holen(token):
+    """-> (umschlag, sha) frisch über die GitHub-API (ohne CDN-Cache)"""
+    h = {"User-Agent": "wildtruhe-ha", "Accept": "application/vnd.github+json"}
+    if token:
+        h["Authorization"] = "Bearer " + token
+    req = urllib.request.Request(f"{API}?ref={BRANCH}&t={int(dt.datetime.now().timestamp())}", headers=h)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        j = json.loads(r.read().decode("utf-8"))
+    return json.loads(base64.b64decode(j["content"]).decode("utf-8")), j["sha"]
 
 
 def holen():
+    token = secret("wildtruhe_github_token", pflicht=False)
+    if token:
+        try:
+            return api_holen(token)[0]
+        except Exception:
+            pass
     urls = [
         f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/{PFAD}?t={int(dt.datetime.now().timestamp())}",
         f"https://api.github.com/repos/{REPO}/contents/{PFAD}?ref={BRANCH}",
@@ -73,6 +104,58 @@ def entschluesseln(env, pw):
         return json.loads(AESGCM(key).decrypt(iv, data, None).decode("utf-8"))
     except Exception:
         fehler("Passwort falsch (wildtruhe_passwort in secrets.yaml prüfen)")
+
+
+def verschluesseln(obj, pw):
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    salt, iv, it = os.urandom(16), os.urandom(12), 150000
+    key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=it).derive(pw.encode("utf-8"))
+    ct = AESGCM(key).encrypt(iv, json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), None)
+    b = lambda x: base64.b64encode(x).decode("ascii")
+    return {"enc": "aes-gcm-v1", "hinweis": "Verschlüsselte Daten", "iter": it, "salt": b(salt), "iv": b(iv), "data": b(ct)}
+
+
+def austragen(nr_text):
+    try:
+        nr = int(str(nr_text).strip().lstrip("#"))
+    except ValueError:
+        out({"ok": False, "meldung": f"Ungültige Paketnummer: {nr_text}"})
+    pw = passwort()
+    token = secret("wildtruhe_github_token", pflicht=False)
+    if not token:
+        out({"ok": False, "meldung": "wildtruhe_github_token fehlt in secrets.yaml"})
+    for _ in range(3):
+        try:
+            env, sha = api_holen(token)
+        except Exception as e:
+            out({"ok": False, "meldung": f"GitHub nicht erreichbar: {e}"})
+        S = entschluesseln(env, pw)
+        it = next((i for i in S.get("items", []) if int(i.get("nr") or 0) == nr and i.get("status") == "truhe"), None)
+        if not it:
+            out({"ok": False, "meldung": f"Paket #{nr:03d} ist nicht (mehr) in der Truhe"})
+        it["status"] = "selbst"
+        it["abgang"] = {"kaeufer": "", "preis": 0, "datum": dt.date.today().isoformat(), "bezahlt": False, "quelle": "Home Assistant"}
+        it["geaendert"] = int(dt.datetime.now().timestamp() * 1000)
+        body = json.dumps(verschluesseln(S, pw), ensure_ascii=False, indent=1) + "\n"
+        daten = json.dumps({"message": f"Wildtruhe: #{nr:03d} selbst verbraucht (Home Assistant)",
+                            "content": base64.b64encode(body.encode("utf-8")).decode("ascii"),
+                            "branch": BRANCH, "sha": sha}).encode("utf-8")
+        req = urllib.request.Request(API, data=daten, method="PUT", headers={
+            "User-Agent": "wildtruhe-ha", "Accept": "application/vnd.github+json",
+            "Authorization": "Bearer " + token, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=30):
+                pass
+            out({"ok": True, "meldung": f"#{nr:03d} {it.get('art')} {it.get('teil')} als selbst verbraucht ausgetragen"})
+        except urllib.error.HTTPError as e:
+            if e.code in (409, 422):
+                continue  # inzwischen geändert -> neu holen
+            out({"ok": False, "meldung": "Token ohne Schreibrecht" if e.code in (401, 403) else f"GitHub-Fehler {e.code}"})
+        except Exception as e:
+            out({"ok": False, "meldung": f"Speichern fehlgeschlagen: {e}"})
+    out({"ok": False, "meldung": "Konflikt beim Speichern – bitte nochmal versuchen"})
 
 
 def plus_monate(d, n):
@@ -176,4 +259,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) >= 3 and sys.argv[1] == "austragen":
+        austragen(sys.argv[2])
     main()

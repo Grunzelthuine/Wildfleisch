@@ -30,3 +30,7 @@ command_line:
         - vorwarn_tage
         - stand
         - fehler
+
+# Paket aus HA austragen (Eigenbedarf) – braucht wildtruhe_github_token in secrets.yaml
+shell_command:
+  wildtruhe_austragen: "python3 /config/wildtruhe/wildtruhe.py austragen {{ nr }}"
