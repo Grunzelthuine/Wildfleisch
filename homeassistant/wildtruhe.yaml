@@ -1,0 +1,32 @@
+# Wildtruhe – Bestand aus der Wildtruhe-App (Repo Grunzelthuine/Wildfleisch)
+# Liest alle 30 Minuten die verschlüsselte Datei, entschlüsselt lokal mit
+# wildtruhe_passwort aus secrets.yaml. Skript: /config/wildtruhe/wildtruhe.py
+command_line:
+  - sensor:
+      name: Wildtruhe
+      unique_id: wildtruhe_bestand
+      command: "python3 /config/wildtruhe/wildtruhe.py"
+      scan_interval: 1800
+      command_timeout: 60
+      value_template: "{{ value_json.bestand }}"
+      unit_of_measurement: Pakete
+      icon: mdi:fridge-outline
+      json_attributes:
+        - kg
+        - wert
+        - wert_text
+        - faellig
+        - bald
+        - faellig_nr
+        - faellig_liste
+        - bald_liste
+        - naechste
+        - naechste_datum
+        - nach_teil
+        - pakete
+        - offen_betrag
+        - verkauft_jahr
+        - monate
+        - vorwarn_tage
+        - stand
+        - fehler
