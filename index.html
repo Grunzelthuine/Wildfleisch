@@ -64,9 +64,15 @@ nav button.on{color:var(--accent);font-weight:600}
 h2{font-size:1.05rem;margin:4px 0 10px}
 h3{font-size:.95rem;margin:14px 0 8px;color:var(--muted);font-weight:600}
 label{display:block;font-size:.8rem;color:var(--muted);margin:8px 0 3px}
-input,select,textarea{width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
+input,select,textarea{width:100%;min-width:0;max-width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
 textarea{min-height:84px;resize:vertical}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 10px}
+.grid2>div{min-width:0}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:44px;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
+.row>input{flex:1 1 auto}
+.chkcell{display:flex;align-items:flex-end}
+.chkcell .chk{margin:0;min-height:44px}
 .btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:10px 14px;font-weight:600}
 .btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .btn.bad{color:var(--bad)}
@@ -83,7 +89,7 @@ textarea{min-height:84px;resize:vertical}
 .x{border:0;background:none;color:var(--muted);font-size:1.2rem;padding:4px 6px}
 .empty{text-align:center;color:var(--muted);padding:30px 10px}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--card);width:100%;max-width:720px;max-height:85vh;max-height:calc(100dvh - env(safe-area-inset-top) - 24px);overflow:auto;-webkit-overflow-scrolling:touch;border-radius:18px 18px 0 0;padding:0 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet{background:var(--card);width:100%;max-width:720px;max-height:85vh;max-height:calc(100dvh - env(safe-area-inset-top) - 24px);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;border-radius:18px 18px 0 0;padding:0 16px calc(20px + env(safe-area-inset-bottom))}
 .sheet .h{display:flex;align-items:center;gap:8px;margin:0 -16px 6px;padding:12px 16px 10px;position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line)}
 .backbtn{font:inherit;font-weight:600;color:var(--accent);background:none;border:0;padding:6px 8px 6px 0;white-space:nowrap}
 .sheet .h b{font-size:1.1rem;flex:1}
@@ -145,7 +151,7 @@ table.pr input,table.pr select{padding:6px 8px}
 <script>
 'use strict';
 /* ================== Daten ================== */
-const APP_VERSION = '1.2.2'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
+const APP_VERSION = '1.2.3'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
 const KEY = 'wildtruhe_v1';
 // Startpreise für Freunde (unterer Bereich, Recherche 11/2026) – in „Mehr“ änderbar
 const DEFAULT_PREISE = {
@@ -762,11 +768,14 @@ function openSheet(id){
     <button class="btn full" id="savef" style="margin-top:12px">Änderungen speichern</button>
     <div class="sep"></div>
     <h2>${truhe ? 'Aus der Truhe nehmen' : 'Abgang'}</h2>
+    ${truhe ? '' : `<label>Art des Abgangs</label><select id="ast">${Object.entries(STATUS).map(([k,l]) => `<option value="${k}" ${k===it.status?'selected':''}>${l}</option>`).join('')}</select>`}
     <div class="grid2">
-      <div><label>An / Käufer</label><input id="ak" value="${esc(ab.kaeufer||'')}" placeholder="Name"></div>
-      <div><label>Preis (€)</label><input id="ap" type="number" inputmode="decimal" step="0.5" value="${ab.preis ?? it.preis}"></div>
+      <div><label id="akl">An / Käufer</label><input id="ak" value="${esc(ab.kaeufer||'')}" placeholder="Name"></div>
       <div><label>Datum</label><input id="ad" type="date" value="${ab.datum || today()}"></div>
-      <div><label class="chk" style="margin-top:28px"><input type="checkbox" id="ab" ${ab.bezahlt?'checked':''}> bezahlt</label></div>
+    </div>
+    <div class="grid2" id="verkf">
+      <div><label>Preis (€)</label><input id="ap" type="number" inputmode="decimal" step="0.5" value="${(ab.preis || ab.preis === 0) && it.status === 'verkauft' ? ab.preis : it.preis}"></div>
+      <div class="chkcell"><label class="chk"><input type="checkbox" id="ab" ${ab.bezahlt?'checked':''}> bezahlt</label></div>
     </div>
     ${truhe ? `<div class="actions">
       <button class="btn pri" data-st="verkauft">💶 Verkauft</button>
@@ -796,7 +805,16 @@ function openSheet(id){
     toast(`${nrTxt(it.nr)} → ${STATUS[it.status]}`); close();
   });
   if (!truhe) {
-    $('#saveab', ov).onclick = () => { applyFields(); it.abgang = readAb(); touch(it); save(); toast('Gespeichert'); close(); };
+    const st = $('#ast', ov);
+    const showVerk = () => { $('#verkf', ov).style.display = st.value === 'verkauft' ? '' : 'none'; $('#akl', ov).textContent = st.value === 'verkauft' ? 'An / Käufer' : (st.value === 'verschenkt' ? 'An' : 'Notiz / An'); };
+    st.onchange = showVerk; showVerk();
+    $('#saveab', ov).onclick = () => {
+      applyFields();
+      const a = readAb();
+      if (st.value !== 'verkauft') { a.preis = 0; a.bezahlt = false; }
+      it.status = st.value; it.abgang = a; touch(it); save();
+      toast(`${nrTxt(it.nr)} → ${STATUS[it.status]}`); close();
+    };
     $('#back', ov).onclick = () => { it.status = 'truhe'; delete it.abgang; touch(it); save(); toast('Wieder in der Truhe'); close(); };
   }
   $('#ics', ov).onclick = () => exportICS([it]);
