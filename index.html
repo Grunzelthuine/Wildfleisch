@@ -137,6 +137,9 @@ table.pr input,table.pr select{padding:6px 8px}
     <input type="password" id="lockPw2" placeholder="Passwort wiederholen" autocomplete="new-password" aria-label="Passwort wiederholen" hidden>
     <button class="btn pri full" id="lockBtn" type="submit">Öffnen</button>
     <p class="hint">Das Passwort wird nur einmal pro Gerät abgefragt.</p>
+    <div class="sep"></div>
+    <button class="btn full" type="button" id="lokalBtn">📱 Ohne Konto nur auf diesem Gerät nutzen</button>
+    <p class="hint">Kein Passwort, kein Abgleich – die Daten bleiben nur auf diesem Handy.</p>
   </form>
 </div>
 <main id="view"></main>
@@ -151,7 +154,7 @@ table.pr input,table.pr select{padding:6px 8px}
 <script>
 'use strict';
 /* ================== Daten ================== */
-const APP_VERSION = '1.2.3'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
+const APP_VERSION = '1.3.0'; // bei jeder Änderung zusammen mit VERSION in sw.js hochzählen
 const KEY = 'wildtruhe_v1';
 // Startpreise für Freunde (unterer Bereich, Recherche 11/2026) – in „Mehr“ änderbar
 const DEFAULT_PREISE = {
@@ -198,6 +201,7 @@ function persistLocal(){
 // jede Änderung: lokal sichern, als „nicht hochgeladen“ markieren, Abgleich mit GitHub anstoßen
 function save(){
   persistLocal();
+  if (isLokal()) { setSync('lokal'); return; }
   DIRTY = true; localStorage.setItem(LS_DIRTY, '1');
   setSync(GH.token ? 'busy' : 'local');
   scheduleSync();
@@ -210,6 +214,19 @@ function saveMeta(){ S.metaZeit = Date.now(); save(); }
  * gleiches Format wie Hochsitze / Jagd Thuine. Ohne Passwort ist die Datei nicht lesbar.
  * Lesen geht ohne Token, Schreiben nur mit GitHub-Token (Einstellungen unter „Mehr“). */
 const LS_PW = 'wt.pw.v1', LS_GH = 'wt.gh.v1', LS_DIRTY = 'wt.dirty.v1';
+// Lokaler Modus: ohne Konto/Passwort, Daten nur auf diesem Gerät (für Bekannte)
+const LS_MODE = 'wt.mode.v1', LS_BAK = 'wt.lastbackup.v1';
+function isLokal(){ return localStorage.getItem(LS_MODE) === 'lokal'; }
+function doBackup(){
+  download(`wildtruhe-sicherung-${today()}.json`, JSON.stringify({seq:S.seq, items:S.items, preise:S.preise, cfg:S.cfg}, null, 1), 'application/json');
+  localStorage.setItem(LS_BAK, today());
+  setTimeout(() => { if (TAB !== 'neu') render(); }, 300);
+}
+function backupFaellig(){
+  if (!isLokal() || !S.items.length) return false;
+  const b = localStorage.getItem(LS_BAK);
+  return !b || daysBetween(b, today()) >= 30;
+}
 const DATA_PATH = 'data/wildtruhe.json';
 let PW = localStorage.getItem(LS_PW) || '';
 let PREV_PW = '';
@@ -291,13 +308,13 @@ let SYNC = {st:'', msg:''};
 function setSync(st, msg = ''){
   SYNC = {st, msg};
   const el = $('#sync'); if (!el) return;
-  const t = {ok:'· ☁️ synchron', busy:'· ⏳ speichere …', local:'· 📱 nur auf diesem Gerät', err:'· ⚠️ ' + msg}[st] || '';
+  const t = {ok:'· ☁️ synchron', busy:'· ⏳ speichere …', local:'· 📱 nur auf diesem Gerät', lokal:'· 📱 lokal gespeichert', err:'· ⚠️ ' + msg}[st] || '';
   el.textContent = t; el.className = st;
 }
 let syncing = false, syncAgain = false, syncT;
 function scheduleSync(ms = 1500){ clearTimeout(syncT); syncT = setTimeout(sync, ms); }
 async function sync(){
-  if (!PW) return;
+  if (!PW || isLokal()) return;
   if (syncing) { syncAgain = true; return; }
   if (document.querySelector('.overlay')) { scheduleSync(2000); return; } // nicht mitten im Bearbeiten austauschen
   syncing = true;
@@ -337,7 +354,7 @@ function showLock(reason){
   $('#lock').hidden = false; $('#view').innerHTML = ''; $('#hsub').textContent = ''; setSync('');
   LOCK_NEW = false; $('#lockPw2').hidden = true; $('#lockPw').value = ''; $('#lockPw2').value = '';
   $('#lockBtn').textContent = 'Öffnen';
-  lockMsg(reason === 'falsch' ? 'Passwort falsch oder geändert – bitte (neu) eingeben.' : 'Bitte Passwort eingeben.', reason === 'falsch');
+  lockMsg(reason === 'falsch' ? 'Passwort falsch oder geändert – bitte (neu) eingeben.' : 'Mit Passwort anmelden – oder unten ohne Konto nur auf diesem Gerät nutzen.', reason === 'falsch');
   setTimeout(() => $('#lockPw').focus(), 50);
 }
 function lockMsg(t, err){ const m = $('#lockMsg'); m.textContent = t; m.classList.toggle('err', !!err); }
@@ -364,6 +381,15 @@ async function unlock(e){
   } catch(err) {
     lockMsg('Keine Verbindung zu GitHub – das Passwort kann gerade nicht geprüft werden.', true);
   } finally { $('#lockBtn').disabled = false; }
+}
+function startLokal(){
+  if (!confirm('Wildtruhe ohne Konto nutzen?\n\nDie Daten bleiben nur auf diesem Handy. Ab und zu unter „Mehr“ eine Sicherung ziehen – geht das Handy verloren, sind sonst alle Einträge weg.')) return;
+  localStorage.setItem(LS_MODE, 'lokal');
+  PW = ''; localStorage.removeItem(LS_PW);
+  DIRTY = false; localStorage.setItem(LS_DIRTY, '0');
+  persistLocal(); migratePreise();
+  $('#lock').hidden = true;
+  setSync('lokal'); go('truhe'); checkNotify();
 }
 function finishUnlock(pw, remote, isNew){
   PW = pw; localStorage.setItem(LS_PW, pw);
@@ -481,6 +507,7 @@ function viewTruhe(){
     <div class="stat"><b>${kg.toLocaleString('de-DE',{maximumFractionDigits:1})}</b><span>kg</span></div>
     <div class="stat"><b>${euro(wert).replace(/,00/,'')}</b><span>Warenwert</span></div></div>`;
   if (rot.length) h += `<div class="banner bad">⏰ <b>${rot.length} ${rot.length===1?'Paket ist':'Pakete sind'} älter als ${S.cfg.monate} Monate</b> – das muss langsam weg.</div>`;
+  if (backupFaellig()) { const b = localStorage.getItem(LS_BAK); h += `<div class="banner warn row" style="gap:10px"><span style="flex:1">💾 ${b ? 'Letzte Sicherung vor ' + daysBetween(b, today()) + ' Tagen' : 'Noch keine Sicherung'} – die Daten liegen nur auf diesem Handy.</span><button class="btn sm" onclick="doBackup()">Sichern</button></div>`; }
   if (gelb.length) h += `<div class="banner warn">${gelb.length} ${gelb.length===1?'Paket erreicht':'Pakete erreichen'} in den nächsten ${S.cfg.vorwarnTage} Tagen die ${S.cfg.monate}-Monats-Grenze.</div>`;
   if (!all.length) {
     h += `<div class="empty">Die Truhe ist leer.<br><br><button class="btn pri" onclick="go('neu')">➕ Erstes Paket eintragen</button></div>`;
@@ -860,7 +887,18 @@ function viewMehr(){
   const arten = Object.keys(S.preise);
   const notif = ('Notification' in window) ? Notification.permission : 'nicht verfügbar';
   const syncTxt = {ok:'☁️ Mit GitHub synchron – verschlüsselt gespeichert.', busy:'⏳ Wird gespeichert …', local:'📱 Änderungen liegen nur auf diesem Gerät – zum Hochladen GitHub-Token eintragen.', err:'⚠️ ' + SYNC.msg}[SYNC.st] || '–';
-  $('#view').innerHTML = `
+  const lokal = isLokal();
+  const lastBak = localStorage.getItem(LS_BAK);
+  $('#view').innerHTML = (lokal ? `
+  <div class="card"><h2>📱 Lokaler Modus</h2>
+    <div class="hint" style="margin-top:0">Die Daten liegen nur auf diesem Gerät – ohne Konto und ohne Abgleich. Geht das Handy verloren oder werden die Browserdaten gelöscht, sind die Einträge weg. Darum ab und zu sichern (die Datei z. B. in iCloud/„Dateien“ ablegen).</div>
+    <div class="hint">Letzte Sicherung: <b>${lastBak ? fmtDate(lastBak) : 'noch nie'}</b></div>
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn pri" id="bak2">⬇︎ Jetzt sichern</button>
+      <button class="btn" id="toOnline">🔒 Mit Passwort anmelden</button>
+    </div>
+    <div class="hint">„Mit Passwort anmelden“ ist nur für den Besitzer des verschlüsselten Online-Speichers gedacht. Einträge von diesem Gerät werden dabei übernommen.</div>
+  </div>` : `
   <div class="card"><h2>🔒 Passwort & GitHub</h2>
     <div class="hint" style="margin-top:0">${esc(syncTxt)}</div>
     <div class="hint">Die Daten liegen verschlüsselt in <b>${esc(GH.owner)}/${esc(GH.repo)}</b> (${DATA_PATH}). Ohne Passwort ist dort nur Zeichensalat zu sehen – keine Namen, keine Preise.</div>
@@ -885,7 +923,7 @@ function viewMehr(){
       <button class="btn bad" id="lockdev">Gerät abmelden</button>
     </div>
     <div class="hint">„Gerät abmelden“ löscht Passwort und Daten von diesem Gerät – im Repo bleibt alles verschlüsselt erhalten.</div>
-  </div>
+  </div>`) + `
   <div class="card"><h2>⏰ Erinnerung</h2>
     <div class="grid2">
       <div><label>Muss weg nach (Monaten)</label><input id="cm" type="number" min="1" max="24" value="${S.cfg.monate}"></div>
@@ -938,29 +976,34 @@ function viewMehr(){
     <div class="hint">„Wiederherstellen“ ersetzt alles durch die Sicherung. „Pakete importieren“ fügt die Pakete aus der Datei hinzu (mit neuen Nummern) – vorhandene bleiben.</div>
     <div class="hint">Nächste Paketnummer: ${nrTxt(S.seq+1)}</div>
   </div>`;
-  $('#ghs').onclick = () => {
-    GH.owner = $('#gho').value.trim(); GH.repo = $('#ghr').value.trim(); GH.token = $('#ght').value.trim(); saveGH();
-    toast('Gespeichert – gleiche ab …'); sync().then(() => { if (TAB === 'mehr') render(); });
-  };
-  $('#syncnow').onclick = () => { toast('Gleiche ab …'); sync().then(() => { if (TAB === 'mehr') render(); }); };
-  $('#pwch').onclick = async () => {
-    const a = $('#np1').value, b = $('#np2').value;
-    if (a.length < 6) return toast('Mindestens 6 Zeichen');
-    if (a !== b) return toast('Passwörter sind verschieden');
-    if (!GH.token) return toast('Dafür wird der GitHub-Token gebraucht');
-    if (!confirm('Passwort ändern? Auf anderen Geräten muss danach das neue Passwort eingegeben werden.')) return;
-    PREV_PW = PW; PW = a; localStorage.setItem(LS_PW, a);
-    DIRTY = true; localStorage.setItem(LS_DIRTY, '1');
-    await sync();
-    toast(PREV_PW ? 'Noch nicht hochgeladen – wird nachgeholt' : 'Passwort geändert ✓');
-    render();
-  };
-  $('#lockdev').onclick = () => {
-    if (DIRTY && !confirm('Es gibt Änderungen, die noch NICHT im Repo sind und dann verloren gehen. Trotzdem abmelden?')) return;
-    if (!DIRTY && !confirm('Passwort und Daten von diesem Gerät entfernen?')) return;
-    localStorage.removeItem(KEY); localStorage.removeItem(LS_DIRTY); DIRTY = false;
-    load(); showLock();
-  };
+  if (lokal) {
+    $('#bak2').onclick = doBackup;
+    $('#toOnline').onclick = () => { if (confirm('Zur Anmeldung mit Passwort wechseln? Die Einträge auf diesem Gerät werden nach der Anmeldung mit den Online-Daten zusammengeführt.')) { localStorage.removeItem(LS_MODE); DIRTY = true; localStorage.setItem(LS_DIRTY, '1'); showLock(); } };
+  } else {
+    $('#ghs').onclick = () => {
+      GH.owner = $('#gho').value.trim(); GH.repo = $('#ghr').value.trim(); GH.token = $('#ght').value.trim(); saveGH();
+      toast('Gespeichert – gleiche ab …'); sync().then(() => { if (TAB === 'mehr') render(); });
+    };
+    $('#syncnow').onclick = () => { toast('Gleiche ab …'); sync().then(() => { if (TAB === 'mehr') render(); }); };
+    $('#pwch').onclick = async () => {
+      const a = $('#np1').value, b = $('#np2').value;
+      if (a.length < 6) return toast('Mindestens 6 Zeichen');
+      if (a !== b) return toast('Passwörter sind verschieden');
+      if (!GH.token) return toast('Dafür wird der GitHub-Token gebraucht');
+      if (!confirm('Passwort ändern? Auf anderen Geräten muss danach das neue Passwort eingegeben werden.')) return;
+      PREV_PW = PW; PW = a; localStorage.setItem(LS_PW, a);
+      DIRTY = true; localStorage.setItem(LS_DIRTY, '1');
+      await sync();
+      toast(PREV_PW ? 'Noch nicht hochgeladen – wird nachgeholt' : 'Passwort geändert ✓');
+      render();
+    };
+    $('#lockdev').onclick = () => {
+      if (DIRTY && !confirm('Es gibt Änderungen, die noch NICHT im Repo sind und dann verloren gehen. Trotzdem abmelden?')) return;
+      if (!DIRTY && !confirm('Passwort und Daten von diesem Gerät entfernen?')) return;
+      localStorage.removeItem(KEY); localStorage.removeItem(LS_DIRTY); DIRTY = false;
+      load(); showLock();
+    };
+  }
   $('#updchk').onclick = async () => { toast('Suche nach Update …'); const f = await checkUpdate(); if (!f) setTimeout(() => { if (!NEW_SW) toast('Du hast die neueste Version (' + APP_VERSION + ')'); }, 2500); };
   $('#hardreload').onclick = hardReload;
   $('#rund').value = String(S.cfg.runden);
@@ -985,7 +1028,7 @@ function viewMehr(){
   };
   $('#icsall').onclick = () => { const l = inTruhe(); if (!l.length) return toast('Truhe ist leer'); exportICS(l); };
   $('#notif').onclick = async () => { try { await Notification.requestPermission(); } catch(e){} render(); checkNotify(); };
-  $('#bak').onclick = () => download(`wildtruhe-sicherung-${today()}.json`, JSON.stringify({seq:S.seq, items:S.items, preise:S.preise, cfg:S.cfg}, null, 1), 'application/json');
+  $('#bak').onclick = doBackup;
   $('#imp').onclick = () => $('#impf').click();
   $('#impf').onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
@@ -1082,7 +1125,7 @@ function swInit(){
       const nw = reg.installing;
       nw && nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) offerUpdate(nw); });
     });
-    if (PW) checkNotify();
+    if (PW || isLokal()) checkNotify();
   }).catch(() => {});
   setInterval(() => { if (document.visibilityState === 'visible') checkUpdate(); }, 30 * 60 * 1000);
 }
@@ -1103,18 +1146,21 @@ document.addEventListener('click', () => { if (NEW_SW && !$('#updbar').hidden) s
 /* ================== Start ================== */
 load();
 $('#lockForm').addEventListener('submit', unlock);
-if (!PW) showLock();
+$('#lokalBtn').onclick = startLokal;
+if (isLokal()) { migratePreise(); go('truhe'); setSync('lokal'); }
+else if (!PW) showLock();
 else { migratePreise(); go('truhe'); setSync(DIRTY ? (GH.token ? 'busy' : 'local') : ''); sync(); }
 swInit();
 $('#reloadBtn').onclick = async () => {
   const b = $('#reloadBtn'); b.classList.add('spin');
   checkUpdate();
-  if (PW) { await sync(); if (TAB !== 'neu') render(); }
+  if (PW) await sync();
+  if ((PW || isLokal()) && TAB !== 'neu') render();
   setTimeout(() => b.classList.remove('spin'), 400);
   if (!NEW_SW) toast(SYNC.st === 'err' ? 'Abgleich fehlgeschlagen: ' + SYNC.msg : 'Aktualisiert ✓');
 };
 $('#updBtn').onclick = () => { if (NEW_SW) NEW_SW.postMessage('skipWaiting'); };
-document.addEventListener('visibilitychange', () => { if (document.hidden) return; checkUpdate(); if (PW) { if (TAB === 'truhe') render(); sync(); checkNotify(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden) return; checkUpdate(); if (PW || isLokal()) { if (TAB === 'truhe') render(); sync(); checkNotify(); } });
 window.addEventListener('online', () => { if (PW) sync(); });
 </script>
 </body>

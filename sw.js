@@ -2,7 +2,7 @@
  * Bei JEDER Änderung an App-Dateien VERSION erhöhen (gleich wie APP_VERSION in index.html)
  * → die App merkt das beim Start / alle 30 Min. und installiert das Update.
  * Daten (data/…) und GitHub-API werden nie zwischengespeichert. */
-const VERSION = 'wt-1.2.3';
+const VERSION = 'wt-1.3.0';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
